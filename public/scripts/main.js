@@ -143,36 +143,36 @@ const Faces = {
     R : Right
 }
 
-const FRU = {
+const KERNEL = {
     F : {
-        U : (i) => { return { index : N * (N - i - 1), step : 1 } },
-        D : (i) => { return { index : N * i,           step : 1 } },
         R : (i) => { return { index : i,               step : N } },
-        L : (i) => { return { index : N - i - 1,       step : N } },
+        U : (i) => { return { index : N * (N - i - 1), step : 1 } },
+        L : (i) => { return { index : N * N - i - 1,   step : -N } },
+        D : (i) => { return { index : (i + 1) * N - 1, step : -1 } },
         axis : 'z',
-        adjacentFaces : ['U', 'R', 'D', 'L'],
+        adjacentFaces : ['R', 'U', 'L', 'D'],
         oppositeFace : 'B',
         layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
     },
 
     R : {
-        U : (i) => { return { index : N - i - 1, step : N } },
-        D : (i) => { return { index : N - i - 1, step : N } },
-        F : (i) => { return { index : N - i - 1, step : N } },
-        B : (i) => { return { index : i,         step : N } },
+        B : (i) => { return { index : N * (N - 1) + i, step : -N } },
+        U : (i) => { return { index : N - i - 1,       step : N } },
+        F : (i) => { return { index : N - i - 1,       step : N } },
+        D : (i) => { return { index : N - i - 1,       step : N } },
         axis : 'x',
-        adjacentFaces : ['U', 'B', 'D', 'F'],
+        adjacentFaces : ['B', 'U', 'F', 'D'],
         oppositeFace : 'L',
         layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
     },
 
     U : {
-        F : (i) => { return { index : N * i, step : 1 } },
+        R : (i) => { return { index : N * i, step : 1 } },
         B : (i) => { return { index : N * i, step : 1 } },
         L : (i) => { return { index : N * i, step : 1 } },
-        R : (i) => { return { index : N * i, step : 1 } },
+        F : (i) => { return { index : N * i, step : 1 } },
         axis : 'y',
-        adjacentFaces : ['F', 'L', 'B', 'R'],
+        adjacentFaces : ['R', 'B', 'L', 'F'],
         oppositeFace : 'D',
         layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
     }
@@ -185,7 +185,7 @@ const previousAngle = new Map();
 
 function rotateLayer(face, deep, deg) {
 
-    const layerRotation = FRU[face].layerRotations[deep];
+    const layerRotation = KERNEL[face].layerRotations[deep];
 
     ROTATOR.rotation.x = layerRotation.x;
     ROTATOR.rotation.y = layerRotation.y;
@@ -196,12 +196,12 @@ function rotateLayer(face, deep, deg) {
             Faces[face].forEach(plane => ROTATOR.attach(plane));
         }
         else if (deep === N - 1) {
-            Faces[FRU[face].oppositeFace].forEach(plane => ROTATOR.attach(plane));
+            Faces[KERNEL[face].oppositeFace].forEach(plane => ROTATOR.attach(plane));
         }
 
-        FRU[face].adjacentFaces.forEach(adj => {
+        KERNEL[face].adjacentFaces.forEach(adj => {
 
-            let iterator = FRU[face][adj](deep);
+            let iterator = KERNEL[face][adj](deep);
 
             for (let i = 0; i < N; i++) {
                 ROTATOR.attach(Faces[adj][iterator.index])
@@ -211,13 +211,12 @@ function rotateLayer(face, deep, deg) {
     }
 
     const rad = THREE.MathUtils.degToRad(deg);
-    ROTATOR.rotation[FRU[face].axis] = rad;
-    layerRotation[FRU[face].axis] = rad;
+    ROTATOR.rotation[KERNEL[face].axis] = rad;
+    layerRotation[KERNEL[face].axis] = rad;
 
     Face = face;
     Angle = deg;
 }
-
 
 function rotateCubeX(degX) {
     CUBE.rotation.x = THREE.MathUtils.degToRad(degX);
@@ -230,6 +229,7 @@ function rotateCubeY(degY) {
 function rotateCubeZ(degZ) {
     CUBE.rotation.z = THREE.MathUtils.degToRad(degZ); 
 }
+
 
 function saveChange(face, direction, countOfRotations, rightCallback, leftCallback) {
     const n = 3;
@@ -257,25 +257,25 @@ function saveChange(face, direction, countOfRotations, rightCallback, leftCallba
 }
 
 function moveSlicesRightAroundFront(n) {
-    swapFaceSlices(Up, Right,   { index : n * (n - 1), step : 1  }, { index : 0,     step : n });
+    swapFaceSlices(Right, Up,   { index : 0,     step : n }, { index : n * (n - 1), step : 1  });
     swapFaceSlices(Up, Left,    { index : n * n - 1,   step : -1 }, { index : n - 1, step : n });
     swapFaceSlices(Left, Down,  { index : n - 1,       step : n  }, { index : 0,     step : 1 });
 }
 
 function moveSlicesLeftAroundFront(n) {
-    swapFaceSlices(Up, Left,    { index : n * n - 1,   step : -1 }, { index : n - 1, step : n  });
+    swapFaceSlices(Left, Up,    { index : n - 1, step : n  }, { index : n * n - 1,   step : -1 });
     swapFaceSlices(Up, Right,   { index : n * (n - 1), step : 1  }, { index : 0,     step : n  });
     swapFaceSlices(Right, Down, { index : 0,           step : n  }, { index : n - 1, step : -1 });
 }
 
 function moveSlicesLeftAroundBack(n) {
-    swapFaceSlices(Up, Right,   { index : 0, step : 1 }, { index : n - 1,       step : n  });
+    swapFaceSlices(Right, Up,   { index : n - 1,       step : n  }, { index : 0, step : 1 });
     swapFaceSlices(Up, Left,    { index : 0, step : 1 }, { index : n * (n - 1), step : -n });
     swapFaceSlices(Left, Down,  { index : 0, step : n }, { index : n * (n - 1), step : 1  });
 }
 
 function moveSlicesRightAroundBack(n) {
-    swapFaceSlices(Up, Left,    { index : 0,     step : 1 }, { index : n * (n - 1), step : -n });
+    swapFaceSlices(Left, Up,    { index : n * (n - 1), step : -n }, { index : 0,     step : 1 });
     swapFaceSlices(Up, Right,   { index : 0,     step : 1 }, { index : n - 1,       step : n  });
     swapFaceSlices(Right, Down, { index : n - 1, step : n }, { index : n * n - 1,   step : -1 });
 }
