@@ -134,24 +134,89 @@ for (let i = N * N * 4; i < N * N * 5; i++) Front.push(CUBE.children[i]);
 const Down = [];
 for (let i = N * N * 5; i < N * N * 6; i++) Down.push(CUBE.children[i]);
 
+const Faces = {
+    F : Front,
+    B : Back,
+    U : Up,
+    D : Down,
+    L : Left,
+    R : Right
+}
+
+const FRU = {
+    F : {
+        U : (i) => { return { index : N * (N - i - 1), step : 1 } },
+        D : (i) => { return { index : N * i,           step : 1 } },
+        R : (i) => { return { index : i,               step : N } },
+        L : (i) => { return { index : N - i - 1,       step : N } },
+        axis : 'z',
+        adjacentFaces : ['U', 'R', 'D', 'L'],
+        oppositeFace : 'B',
+        layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
+    },
+
+    R : {
+        U : (i) => { return { index : N - i - 1, step : N } },
+        D : (i) => { return { index : N - i - 1, step : N } },
+        F : (i) => { return { index : N - i - 1, step : N } },
+        B : (i) => { return { index : i,         step : N } },
+        axis : 'x',
+        adjacentFaces : ['U', 'B', 'D', 'F'],
+        oppositeFace : 'L',
+        layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
+    },
+
+    U : {
+        F : (i) => { return { index : N * i, step : 1 } },
+        B : (i) => { return { index : N * i, step : 1 } },
+        L : (i) => { return { index : N * i, step : 1 } },
+        R : (i) => { return { index : N * i, step : 1 } },
+        axis : 'y',
+        adjacentFaces : ['F', 'L', 'B', 'R'],
+        oppositeFace : 'D',
+        layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
+    }
+};
 
 // ROTATOR helpers
 let Face  = 'F';        // can be any face
 let Angle = 0;
 const previousAngle = new Map();
 
+function rotateLayer(face, deep, deg) {
 
+    const layerRotation = FRU[face].layerRotations[deep];
 
-const rotFront       = ROTATOR.rotation.toVector3();
-const rotBack        = ROTATOR.rotation.toVector3();
-const rotUp          = ROTATOR.rotation.toVector3();
-const rotDown        = ROTATOR.rotation.toVector3();
-const rotLeft        = ROTATOR.rotation.toVector3();
-const rotRight       = ROTATOR.rotation.toVector3();
-const rotUnderFront  = ROTATOR.rotation.toVector3();
-const rotUnderUp     = ROTATOR.rotation.toVector3();
-const rotUnderRight  = ROTATOR.rotation.toVector3();
+    ROTATOR.rotation.x = layerRotation.x;
+    ROTATOR.rotation.y = layerRotation.y;
+    ROTATOR.rotation.z = layerRotation.z;
 
+    if (ROTATOR.children.length === 0) {
+        if (deep === 0) {
+            Faces[face].forEach(plane => ROTATOR.attach(plane));
+        }
+        else if (deep === N - 1) {
+            Faces[FRU[face].oppositeFace].forEach(plane => ROTATOR.attach(plane));
+        }
+
+        FRU[face].adjacentFaces.forEach(adj => {
+
+            let iterator = FRU[face][adj](deep);
+
+            for (let i = 0; i < N; i++) {
+                ROTATOR.attach(Faces[adj][iterator.index])
+                iterator.index += iterator.step;
+            }
+        });
+    }
+
+    const rad = THREE.MathUtils.degToRad(deg);
+    ROTATOR.rotation[FRU[face].axis] = rad;
+    layerRotation[FRU[face].axis] = rad;
+
+    Face = face;
+    Angle = deg;
+}
 
 
 function rotateCubeX(degX) {
@@ -165,304 +230,6 @@ function rotateCubeY(degY) {
 function rotateCubeZ(degZ) {
     CUBE.rotation.z = THREE.MathUtils.degToRad(degZ); 
 }
-
-function rotateFront(deg) {
-
-    ROTATOR.rotation.x = rotFront.x;
-    ROTATOR.rotation.y = rotFront.y;
-    ROTATOR.rotation.z = rotFront.z;
-
-    if (ROTATOR.children.length === 0) {
-        Front.forEach(plane => ROTATOR.attach(plane));
-        ROTATOR.attach(Left[2])
-        ROTATOR.attach(Left[5])
-        ROTATOR.attach(Left[8])
-
-        ROTATOR.attach(Right[0]);
-        ROTATOR.attach(Right[3]);
-        ROTATOR.attach(Right[6]);
-
-        ROTATOR.attach(Up[6]);
-        ROTATOR.attach(Up[7]);
-        ROTATOR.attach(Up[8]);
-
-        ROTATOR.attach(Down[0]);
-        ROTATOR.attach(Down[1]);
-        ROTATOR.attach(Down[2]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(-deg);
-    ROTATOR.rotation.z = rad;
-    rotFront.z = rad;
-
-    Face = 'F';
-    Angle = deg;
-}
-
-function rotateBack(deg) {
-
-    ROTATOR.rotation.x = rotBack.x;
-    ROTATOR.rotation.y = rotBack.y;
-    ROTATOR.rotation.z = rotBack.z;
-
-    if (ROTATOR.children.length === 0) {
-        Back.forEach(plane => ROTATOR.attach(plane));
-        ROTATOR.attach(Left[0]);
-        ROTATOR.attach(Left[3]);
-        ROTATOR.attach(Left[6]);
-
-        ROTATOR.attach(Right[2]);
-        ROTATOR.attach(Right[5]);
-        ROTATOR.attach(Right[8]);
-
-        ROTATOR.attach(Up[0]);
-        ROTATOR.attach(Up[1]);
-        ROTATOR.attach(Up[2]);
-
-        ROTATOR.attach(Down[6]);
-        ROTATOR.attach(Down[7]);
-        ROTATOR.attach(Down[8]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(deg);
-    ROTATOR.rotation.z = rad;
-    rotBack.z = rad;
-
-    Face = 'B';
-    Angle = deg;
-}
-
-function rotateUp(deg) {
-
-    ROTATOR.rotation.x = rotUp.x;
-    ROTATOR.rotation.y = rotUp.y;
-    ROTATOR.rotation.z = rotUp.z;
-
-    if (ROTATOR.children.length === 0) {
-        Up.forEach(plane => ROTATOR.attach(plane));
-        ROTATOR.attach(Back[0]);
-        ROTATOR.attach(Back[1]);
-        ROTATOR.attach(Back[2]);
-
-        ROTATOR.attach(Front[0]);
-        ROTATOR.attach(Front[1]);
-        ROTATOR.attach(Front[2]);
-
-        ROTATOR.attach(Left[0]);
-        ROTATOR.attach(Left[1]);
-        ROTATOR.attach(Left[2]);
-
-        ROTATOR.attach(Right[0]);
-        ROTATOR.attach(Right[1]);
-        ROTATOR.attach(Right[2]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(-deg);
-    ROTATOR.rotation.y = rad;
-    rotUp.y = rad;
-
-    Face = 'U';
-    Angle = deg;
-}
-
-function rotateDown(deg) {
-
-    ROTATOR.rotation.x = rotDown.x;
-    ROTATOR.rotation.y = rotDown.y;
-    ROTATOR.rotation.z = rotDown.z;
-
-    if (ROTATOR.children.length === 0) {
-        Down.forEach(plane => ROTATOR.attach(plane));
-
-        ROTATOR.attach(Back[6]);
-        ROTATOR.attach(Back[7]);
-        ROTATOR.attach(Back[8]);
-
-        ROTATOR.attach(Front[6]);
-        ROTATOR.attach(Front[7]);
-        ROTATOR.attach(Front[8]);
-
-        ROTATOR.attach(Left[6]);
-        ROTATOR.attach(Left[7]);
-        ROTATOR.attach(Left[8]);
-
-        ROTATOR.attach(Right[6]);
-        ROTATOR.attach(Right[7]);
-        ROTATOR.attach(Right[8]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(deg);
-    ROTATOR.rotation.y = rad;
-    rotDown.y = rad;
-
-    Face = 'D';
-    Angle = deg;
-}
-
-function rotateLeft(deg) {
-
-    ROTATOR.rotation.x = rotLeft.x;
-    ROTATOR.rotation.y = rotLeft.y;
-    ROTATOR.rotation.z = rotLeft.z;
-
-    if (ROTATOR.children.length === 0) {
-        Left.forEach(plane => ROTATOR.attach(plane));
-
-        ROTATOR.attach(Back[2]);
-        ROTATOR.attach(Back[5]);
-        ROTATOR.attach(Back[8]);
-
-        ROTATOR.attach(Front[0]);
-        ROTATOR.attach(Front[3]);
-        ROTATOR.attach(Front[6]);
-
-        ROTATOR.attach(Up[0]);
-        ROTATOR.attach(Up[3]);
-        ROTATOR.attach(Up[6]);
-
-        ROTATOR.attach(Down[0]);
-        ROTATOR.attach(Down[3]);
-        ROTATOR.attach(Down[6]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(deg);
-    ROTATOR.rotation.x = rad;
-    rotLeft.x = rad;
-
-    Face = 'L';
-    Angle = deg;
-}
-
-function rotateRight(deg) {
-
-    ROTATOR.rotation.x = rotRight.x;
-    ROTATOR.rotation.y = rotRight.y;
-    ROTATOR.rotation.z = rotRight.z;
-
-    if (ROTATOR.children.length === 0) {
-        Right.forEach(plane => ROTATOR.attach(plane));
-
-        ROTATOR.attach(Front[2]);
-        ROTATOR.attach(Front[5]);
-        ROTATOR.attach(Front[8]);
-
-        ROTATOR.attach(Back[0]);
-        ROTATOR.attach(Back[3]);
-        ROTATOR.attach(Back[6]);
-
-        ROTATOR.attach(Up[2]);
-        ROTATOR.attach(Up[5]);
-        ROTATOR.attach(Up[8]);
-
-        ROTATOR.attach(Down[2]);
-        ROTATOR.attach(Down[5]);
-        ROTATOR.attach(Down[8]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(-deg);
-    ROTATOR.rotation.x = rad;
-    rotRight.x = rad;
-
-    Face = 'R';
-    Angle = deg;
-}
-
-function rotateUnderUp(numberOfLayer, deg) {
-
-    ROTATOR.rotation.x = rotUnderUp.x;
-    ROTATOR.rotation.y = rotUnderUp.y;
-    ROTATOR.rotation.z = rotUnderUp.z;
-
-    if (ROTATOR.children.length === 0) {
-        ROTATOR.attach(Back[3]);
-        ROTATOR.attach(Back[4]);
-        ROTATOR.attach(Back[5]);
-
-        ROTATOR.attach(Front[3]);
-        ROTATOR.attach(Front[4]);
-        ROTATOR.attach(Front[5]);
-
-        ROTATOR.attach(Left[3]);
-        ROTATOR.attach(Left[4]);
-        ROTATOR.attach(Left[5]);
-
-        ROTATOR.attach(Right[3]);
-        ROTATOR.attach(Right[4]);
-        ROTATOR.attach(Right[5]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(-deg);
-    ROTATOR.rotation.y = rad;
-    rotUnderUp.y = rad;
-
-    Face = 'U' + numberOfLayer;
-    Angle = deg;
-}
-
-function rotateUnderFront(numberOfLayer, deg) {
-
-    ROTATOR.rotation.x = rotUnderFront.x;
-    ROTATOR.rotation.y = rotUnderFront.y;
-    ROTATOR.rotation.z = rotUnderFront.z;
-
-    if (ROTATOR.children.length === 0) {
-        ROTATOR.attach(Left[1]);
-        ROTATOR.attach(Left[4]);
-        ROTATOR.attach(Left[7]);
-
-        ROTATOR.attach(Right[1]);
-        ROTATOR.attach(Right[4]);
-        ROTATOR.attach(Right[7]);
-
-        ROTATOR.attach(Up[3]);
-        ROTATOR.attach(Up[4]);
-        ROTATOR.attach(Up[5]);
-
-        ROTATOR.attach(Down[3]);
-        ROTATOR.attach(Down[4]);
-        ROTATOR.attach(Down[5]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(-deg);
-    ROTATOR.rotation.z = rad;
-    rotUnderFront.z = rad;
-
-    Face = 'F' + numberOfLayer;
-    Angle = deg;
-}
-
-function rotateUnderRight(numberOfLayer, deg) {
-
-    ROTATOR.rotation.x = rotUnderRight.x;
-    ROTATOR.rotation.y = rotUnderRight.y;
-    ROTATOR.rotation.z = rotUnderRight.z;
-
-    if (ROTATOR.children.length === 0) {
-        ROTATOR.attach(Front[1]);
-        ROTATOR.attach(Front[4]);
-        ROTATOR.attach(Front[7]);
-
-        ROTATOR.attach(Back[1]);
-        ROTATOR.attach(Back[4]);
-        ROTATOR.attach(Back[7]);
-
-        ROTATOR.attach(Up[1]);
-        ROTATOR.attach(Up[4]);
-        ROTATOR.attach(Up[7]);
-
-        ROTATOR.attach(Down[1]);
-        ROTATOR.attach(Down[4]);
-        ROTATOR.attach(Down[7]);
-    }
-
-    const rad = THREE.MathUtils.degToRad(-deg);
-    ROTATOR.rotation.x = rad;
-    rotUnderRight.x = rad;
-
-    Face = 'R' + numberOfLayer;
-    Angle = deg;
-}
-
 
 function saveChange(face, direction, countOfRotations, rightCallback, leftCallback) {
     const n = 3;
@@ -748,15 +515,19 @@ panel.add(controller, 'fixChange', true, false).onChange(function() {
     }
 });
 
-panel.add(controller, 'F', -180, 180, 30).onChange(() => rotateFront(controller.F));
-panel.add(controller, 'B', -180, 180, 30).onChange(() => rotateBack(controller.B));
-panel.add(controller, 'R', -180, 180, 30).onChange(() => rotateRight(controller.R));
-panel.add(controller, 'L', -180, 180, 30).onChange(() => rotateLeft(controller.L));
-panel.add(controller, 'D', -180, 180, 30).onChange(() => rotateDown(controller.D));
-panel.add(controller, 'U', -180, 180, 30).onChange(() => rotateUp(controller.U));
-panel.add(controller, 'U1', -180, 180, 30).onChange(() => rotateUnderUp(1, controller.U1));
-panel.add(controller, 'F1', -180, 180, 30).onChange(() => rotateUnderFront(1, controller.F1));
-panel.add(controller, 'R1', -180, 180, 30).onChange(() => rotateUnderRight(1, controller.R1));
+panel.add(controller, 'F', -180, 180, 30).onChange(() => rotateLayer('F', 0, -controller.F) );
+panel.add(controller, 'F1', -180, 180, 30).onChange(() => rotateLayer('F', 1, -controller.F1) );
+panel.add(controller, 'B', -180, 180, 30).onChange(() => rotateLayer('F', N - 1, controller.B) );
+
+panel.add(controller, 'R', -180, 180, 30).onChange(() => rotateLayer('R', 0, -controller.R) );
+panel.add(controller, 'R1', -180, 180, 30).onChange(() => rotateLayer('R', 1, -controller.R1) );
+panel.add(controller, 'L', -180, 180, 30).onChange(() => rotateLayer('R', N - 1, controller.L) );
+
+panel.add(controller, 'U', -180, 180, 30).onChange(() => rotateLayer('U', 0, -controller.U) );
+panel.add(controller, 'U1', -180, 180, 30).onChange(() => rotateLayer('U', 1, -controller.U1) );
+panel.add(controller, 'D', -180, 180, 30).onChange(() => rotateLayer('U', N - 1, controller.D) );
+
+
 
 // update each frame
 function update() {
