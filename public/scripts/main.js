@@ -17,7 +17,7 @@ const gridHelper = new THREE.GridHelper(5, 10);
 scene.add(gridHelper);
 
 // camera
-camera.position.set(2, 2, 5);
+camera.position.set(5, 5, 10);
 camera.lookAt(0, 0, 0);
 const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -33,6 +33,8 @@ function createLight(x, y, z) {
 createLight(-5, 5, 5);
 createLight(5, -5, -5);
 
+const N = 5;
+
 const WHITE  = 0xffffff;
 const ORANGE = 0xf4844c;
 const RED    = 0xe14343;
@@ -45,8 +47,10 @@ function createFace(color) {
     const group = new THREE.Group();
     const planeSize = 1;
 
-    for (let y = 1; y >= -1; y--) {
-        for (let x = -1; x <= 1; x++) {
+    const k = (N - 1) / 2;
+
+    for (let y = k; y >= -k; y--) {
+        for (let x = -k; x <= k; x++) {
             const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
             const material = new THREE.MeshPhongMaterial({
                 color: color,
@@ -74,34 +78,36 @@ function createFace(color) {
 
 const CUBE = new THREE.Group();
 
-const UP = createFace(YELLOW);
-UP.rotateX(THREE.MathUtils.degToRad(-90));
-UP.position.y = 1.5;
-while (UP.children.length > 0) CUBE.attach(UP.children[0]);
-
-const LEFT = createFace(ORANGE);
-LEFT.rotateY(THREE.MathUtils.degToRad(-90));
-LEFT.position.x = -1.5;
-while (LEFT.children.length > 0) CUBE.attach(LEFT.children[0]);
-
-const BACK = createFace(GREEN);
-BACK.rotateY(THREE.MathUtils.degToRad(180));
-BACK.position.z = -1.5;
-while (BACK.children.length > 0) CUBE.attach(BACK.children[0]);
-
-const RIGHT = createFace(RED);
-RIGHT.rotateY(THREE.MathUtils.degToRad(90));
-RIGHT.position.x = 1.5;
-while (RIGHT.children.length > 0) CUBE.attach(RIGHT.children[0]);
-
-const FRONT = createFace(BLUE);
-FRONT.position.z = 1.5;
-while (FRONT.children.length > 0) CUBE.attach(FRONT.children[0]);
-
-const DOWN = createFace(WHITE)
-DOWN.rotateX(THREE.MathUtils.degToRad(90));
-DOWN.position.y = -1.5;
-while (DOWN.children.length > 0) CUBE.attach(DOWN.children[0]);
+(function setCubeFaces() {
+    const UP = createFace(YELLOW);
+    UP.rotateX(THREE.MathUtils.degToRad(-90));
+    UP.position.y = N / 2;
+    while (UP.children.length > 0) CUBE.attach(UP.children[0]);
+    
+    const LEFT = createFace(ORANGE);
+    LEFT.rotateY(THREE.MathUtils.degToRad(-90));
+    LEFT.position.x = -N / 2;
+    while (LEFT.children.length > 0) CUBE.attach(LEFT.children[0]);
+    
+    const BACK = createFace(GREEN);
+    BACK.rotateY(THREE.MathUtils.degToRad(180));
+    BACK.position.z = -N / 2;
+    while (BACK.children.length > 0) CUBE.attach(BACK.children[0]);
+    
+    const RIGHT = createFace(RED);
+    RIGHT.rotateY(THREE.MathUtils.degToRad(90));
+    RIGHT.position.x = N / 2;
+    while (RIGHT.children.length > 0) CUBE.attach(RIGHT.children[0]);
+    
+    const FRONT = createFace(BLUE);
+    FRONT.position.z = N / 2;
+    while (FRONT.children.length > 0) CUBE.attach(FRONT.children[0]);
+    
+    const DOWN = createFace(WHITE)
+    DOWN.rotateX(THREE.MathUtils.degToRad(90));
+    DOWN.position.y = -N / 2;
+    while (DOWN.children.length > 0) CUBE.attach(DOWN.children[0]);
+})();
 
 const ROTATOR = new THREE.Group();
 CUBE.add(ROTATOR);
@@ -111,27 +117,30 @@ scene.add(CUBE);
 
 // Initial state of the cube - solved
 const Up = [];
-for (let i = 0; i < 9; i++) Up.push(CUBE.children[i]);
+for (let i = 0; i < N * N; i++) Up.push(CUBE.children[i]);
 
 const Left = [];
-for (let i = 9; i < 18; i++) Left.push(CUBE.children[i]);
+for (let i = N * N; i < N * N * 2; i++) Left.push(CUBE.children[i]);
 
 const Back = [];
-for (let i = 18; i < 27; i++) Back.push(CUBE.children[i]);
+for (let i = N * N * 2; i < N * N * 3; i++) Back.push(CUBE.children[i]);
 
 const Right = [];
-for (let i = 27; i < 36; i++) Right.push(CUBE.children[i]);
+for (let i = N * N * 3; i < N * N * 4; i++) Right.push(CUBE.children[i]);
 
 const Front = [];
-for (let i = 36; i < 45; i++) Front.push(CUBE.children[i]);
+for (let i = N * N * 4; i < N * N * 5; i++) Front.push(CUBE.children[i]);
 
 const Down = [];
-for (let i = 45; i < 54; i++) Down.push(CUBE.children[i]);
+for (let i = N * N * 5; i < N * N * 6; i++) Down.push(CUBE.children[i]);
+
 
 // ROTATOR helpers
-let Face  = 'F';
+let Face  = 'F';        // can be any face
 let Angle = 0;
 const previousAngle = new Map();
+
+
 
 const rotFront       = ROTATOR.rotation.toVector3();
 const rotBack        = ROTATOR.rotation.toVector3();
@@ -459,26 +468,25 @@ function saveChange(face, direction, countOfRotations, rightCallback, leftCallba
     const n = 3;
 
     countOfRotations %= 4;
-    if (countOfRotations === 0) return;
 
-    if (direction === 'right') {
-        if (face) {
-            transpose(face);
-            invertColumns(face);
+    while (countOfRotations-- > 0) {
+        if (direction === 'right') {
+            if (face) {
+                transpose(face);
+                invertColumns(face);
+            }
+    
+            rightCallback(n);
         }
-
-        rightCallback(n);
-    }
-    else if (direction === 'left') {
-        if (face) {
-            invertColumns(face);
-            transpose(face);
+        else if (direction === 'left') {
+            if (face) {
+                invertColumns(face);
+                transpose(face);
+            }
+            
+            leftCallback(n);
         }
-        
-        leftCallback(n);
     }
-
-    saveChange(face, direction, countOfRotations - 1, rightCallback, leftCallback);
 }
 
 function moveSlicesRightAroundFront(n) {
@@ -587,33 +595,6 @@ function moveSlicesLeftAroundU1(n) {
     swapFaceSlices(Right, Front, { index : n, step : 1 }, { index : n, step : 1 });
     swapFaceSlices(Front, Left,  { index : n, step : 1 }, { index : n, step : 1 });
     swapFaceSlices(Left, Back,   { index : n, step : 1 }, { index : n, step : 1 });
-}
-
-
-function fixFront(direction, countOfRotations) {
-    const n = 3;
-
-    countOfRotations %= 4;
-    if (countOfRotations === 0) return;
-
-    if (direction === 'right') {
-        transpose(Front);
-        invertColumns(Front);
-
-        swapFaceSlices(Up, Right,   { index : n * (n - 1), step : 1  }, { index : 0,     step : n });
-        swapFaceSlices(Up, Left,    { index : n * n - 1,   step : -1 }, { index : n - 1, step : n });
-        swapFaceSlices(Left, Down,  { index : n - 1,       step : n  }, { index : 0,     step : 1 });
-    }
-    else if (direction === 'left') {
-        invertColumns(Front);
-        transpose(Front);
-
-        swapFaceSlices(Up, Left,    { index : n * n - 1,   step : -1 }, { index : n - 1, step : n  });
-        swapFaceSlices(Up, Right,   { index : n * (n - 1), step : 1  }, { index : 0,     step : n  });
-        swapFaceSlices(Right, Down, { index : 0,           step : n  }, { index : n - 1, step : -1 });
-    }
-
-    fixFront(direction, countOfRotations - 1);
 }
 
 function transpose(arr) {
