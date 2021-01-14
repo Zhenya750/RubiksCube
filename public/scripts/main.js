@@ -152,7 +152,8 @@ const KERNEL = {
         axis : 'z',
         adjacentFaces : ['R', 'U', 'L', 'D'],
         oppositeFace : 'B',
-        layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
+        layerRotations : Array.from({ length: N }, () => ROTATOR.rotation.toVector3()),
+        layerPreviousAngles : new Array(N).fill(0)
     },
 
     R : {
@@ -163,7 +164,8 @@ const KERNEL = {
         axis : 'x',
         adjacentFaces : ['B', 'U', 'F', 'D'],
         oppositeFace : 'L',
-        layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
+        layerRotations : Array.from({ length: N }, () => ROTATOR.rotation.toVector3()),
+        layerPreviousAngles : new Array(N).fill(0)
     },
 
     U : {
@@ -174,14 +176,15 @@ const KERNEL = {
         axis : 'y',
         adjacentFaces : ['R', 'B', 'L', 'F'],
         oppositeFace : 'D',
-        layerRotations : new Array(N).fill(ROTATOR.rotation.toVector3())
+        layerRotations : Array.from({ length: N }, () => ROTATOR.rotation.toVector3()),
+        layerPreviousAngles : new Array(N).fill(0)
     }
 };
 
 // ROTATOR helpers
 let Face  = 'F';        // can be any face
+let Index = 0;
 let Angle = 0;
-const previousAngle = new Map();
 
 function rotateLayer(face, deep, deg) {
 
@@ -210,11 +213,12 @@ function rotateLayer(face, deep, deg) {
         });
     }
 
-    const rad = THREE.MathUtils.degToRad(deg);
+    const rad = THREE.MathUtils.degToRad(deg * (deep === N - 1 ? 1 : -1));
     ROTATOR.rotation[KERNEL[face].axis] = rad;
     layerRotation[KERNEL[face].axis] = rad;
 
-    Face = face;
+    Face  = face;
+    Index = deep;
     Angle = deg;
 }
 
@@ -230,140 +234,6 @@ function rotateCubeZ(degZ) {
     CUBE.rotation.z = THREE.MathUtils.degToRad(degZ); 
 }
 
-
-function saveChange(face, direction, countOfRotations, rightCallback, leftCallback) {
-    const n = 3;
-
-    countOfRotations %= 4;
-
-    while (countOfRotations-- > 0) {
-        if (direction === 'right') {
-            if (face) {
-                transpose(face);
-                invertColumns(face);
-            }
-    
-            rightCallback(n);
-        }
-        else if (direction === 'left') {
-            if (face) {
-                invertColumns(face);
-                transpose(face);
-            }
-            
-            leftCallback(n);
-        }
-    }
-}
-
-function moveSlicesRightAroundFront(n) {
-    swapFaceSlices(Right, Up,   { index : 0,     step : n }, { index : n * (n - 1), step : 1  });
-    swapFaceSlices(Up, Left,    { index : n * n - 1,   step : -1 }, { index : n - 1, step : n });
-    swapFaceSlices(Left, Down,  { index : n - 1,       step : n  }, { index : 0,     step : 1 });
-}
-
-function moveSlicesLeftAroundFront(n) {
-    swapFaceSlices(Left, Up,    { index : n - 1, step : n  }, { index : n * n - 1,   step : -1 });
-    swapFaceSlices(Up, Right,   { index : n * (n - 1), step : 1  }, { index : 0,     step : n  });
-    swapFaceSlices(Right, Down, { index : 0,           step : n  }, { index : n - 1, step : -1 });
-}
-
-function moveSlicesLeftAroundBack(n) {
-    swapFaceSlices(Right, Up,   { index : n - 1,       step : n  }, { index : 0, step : 1 });
-    swapFaceSlices(Up, Left,    { index : 0, step : 1 }, { index : n * (n - 1), step : -n });
-    swapFaceSlices(Left, Down,  { index : 0, step : n }, { index : n * (n - 1), step : 1  });
-}
-
-function moveSlicesRightAroundBack(n) {
-    swapFaceSlices(Left, Up,    { index : n * (n - 1), step : -n }, { index : 0,     step : 1 });
-    swapFaceSlices(Up, Right,   { index : 0,     step : 1 }, { index : n - 1,       step : n  });
-    swapFaceSlices(Right, Down, { index : n - 1, step : n }, { index : n * n - 1,   step : -1 });
-}
-
-function moveSlicesLeftAroundRight(n) {
-    swapFaceSlices(Up, Front,   { index : n - 1,     step : n  }, { index : n - 1,     step : n  });
-    swapFaceSlices(Up, Back,    { index : n * n - 1, step : -n }, { index : 0,         step : n  });
-    swapFaceSlices(Back, Down,  { index : 0,         step : n  }, { index : n * n - 1, step : -n });
-}
-
-function moveSlicesRightAroundRight(n) {
-    swapFaceSlices(Up, Back,    { index : n * n - 1, step : -n }, { index : 0,     step : n });
-    swapFaceSlices(Up, Front,   { index : n - 1,     step : n  }, { index : n - 1, step : n });
-    swapFaceSlices(Front, Down, { index : n - 1,     step : n  }, { index : n - 1, step : n });
-}
-
-function moveSlicesRightAroundLeft(n) {
-    swapFaceSlices(Up, Front,   { index : 0,         step : n  }, { index : 0,         step : n  });
-    swapFaceSlices(Up, Back,    { index : 0,         step : n  }, { index : n * n - 1, step : -n });
-    swapFaceSlices(Back, Down,  { index : n * n - 1, step : -n }, { index : 0,         step : n  });
-}
-
-function moveSlicesLeftAroundLeft(n) {
-    swapFaceSlices(Up, Back,    { index : 0, step : n }, { index : n * n - 1, step : -n });
-    swapFaceSlices(Up, Front,   { index : 0, step : n }, { index : 0,         step : n });
-    swapFaceSlices(Front, Down, { index : 0, step : n }, { index : 0,         step : n });
-}
-
-function moveSlicesRightAroundUp(n) {
-    swapFaceSlices(Left, Front,  { index : 0, step : 1 }, { index : 0, step : 1 });
-    swapFaceSlices(Front, Right, { index : 0, step : 1 }, { index : 0, step : 1 });
-    swapFaceSlices(Right, Back,  { index : 0, step : 1 }, { index : 0, step : 1 });
-}
-
-function moveSlicesLeftAroundUp(n) {
-    swapFaceSlices(Right, Front, { index : 0, step : 1 }, { index : 0, step : 1 });
-    swapFaceSlices(Front, Left,  { index : 0, step : 1 }, { index : 0, step : 1 });
-    swapFaceSlices(Left, Back,   { index : 0, step : 1 }, { index : 0, step : 1 });
-}
-
-function moveSlicesRightAroundDown(n) {
-    swapFaceSlices(Right, Front, { index : n * (n - 1), step : 1 }, { index : n * (n - 1), step : 1 });
-    swapFaceSlices(Front, Left,  { index : n * (n - 1), step : 1 }, { index : n * (n - 1), step : 1 });
-    swapFaceSlices(Left, Back,   { index : n * (n - 1), step : 1 }, { index : n * (n - 1), step : 1 });
-}
-
-function moveSlicesLeftAroundDown(n) {
-    swapFaceSlices(Left, Front,  { index : n * (n - 1), step : 1 }, { index : n * (n - 1), step : 1 });
-    swapFaceSlices(Front, Right, { index : n * (n - 1), step : 1 }, { index : n * (n - 1), step : 1 });
-    swapFaceSlices(Right, Back,  { index : n * (n - 1), step : 1 }, { index : n * (n - 1), step : 1 });
-}
-
-function moveSlicesRightAroundF1(n) {
-    swapFaceSlices(Up, Right,   { index : n,         step : 1  }, { index : 1, step : n });
-    swapFaceSlices(Up, Left,    { index : n + n - 1, step : -1 }, { index : 1, step : n });
-    swapFaceSlices(Left, Down,  { index : 1,         step : n  }, { index : n, step : 1 });
-}
-
-function moveSlicesLeftAroundF1(n) {
-    swapFaceSlices(Up, Left,    { index : n + n - 1, step : -1 }, { index : 1,         step : n  });
-    swapFaceSlices(Up, Right,   { index : n,         step : 1  }, { index : 1,         step : n  });
-    swapFaceSlices(Right, Down, { index : 1,         step : n  }, { index : n + n - 1, step : -1 });
-}
-
-function moveSlicesLeftAroundR1(n) {
-    swapFaceSlices(Up, Front,   { index : 1,         step : n  }, { index : 1,         step : n  });
-    swapFaceSlices(Up, Back,    { index : n * n - 2, step : -n }, { index : 1,         step : n  });
-    swapFaceSlices(Back, Down,  { index : 1,         step : n  }, { index : n * n - 2, step : -n });
-}
-
-function moveSlicesRightAroundR1(n) {
-    swapFaceSlices(Up, Back,    { index : n * n - 2, step : -n }, { index : 1, step : n  });
-    swapFaceSlices(Up, Front,   { index : 1,         step : n  }, { index : 1, step : n  });
-    swapFaceSlices(Front, Down, { index : 1,         step : n  }, { index : 1, step : n });
-}
-
-function moveSlicesRightAroundU1(n) {
-    swapFaceSlices(Left, Front,  { index : n, step : 1 }, { index : n, step : 1 });
-    swapFaceSlices(Front, Right, { index : n, step : 1 }, { index : n, step : 1 });
-    swapFaceSlices(Right, Back,  { index : n, step : 1 }, { index : n, step : 1 });
-}
-
-function moveSlicesLeftAroundU1(n) {
-    swapFaceSlices(Right, Front, { index : n, step : 1 }, { index : n, step : 1 });
-    swapFaceSlices(Front, Left,  { index : n, step : 1 }, { index : n, step : 1 });
-    swapFaceSlices(Left, Back,   { index : n, step : 1 }, { index : n, step : 1 });
-}
-
 function transpose(arr) {
     const n = Math.round(Math.sqrt(arr.length));
 
@@ -376,13 +246,15 @@ function transpose(arr) {
     }
 }
 
-function invertColumns(arr) {
+function invertRows(arr) {
     const n = Math.round(Math.sqrt(arr.length));
 
-    for (let i = 0, j = n - 1; j < arr.length; i += n, j += n) {
-        const tmp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = tmp;
+    for (let k = 0; k < N; k++) {
+        for (let i = N * k, j = i + N - 1; i < j; i++, j--) {
+            const tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+        }
     }
 }
 
@@ -399,19 +271,79 @@ function swapFaceSlices(faceA, faceB, startIndexA, startIndexB) {
     }
 }
 
+function saveChange(direction, countOfRotations) {
+
+    countOfRotations %= 4;
+
+    while (countOfRotations-- > 0) {
+        if (direction === 'right') {
+
+            if (Index === 0) {
+                transpose(Faces[Face]);
+                invertRows(Faces[Face]);
+            }
+            else if (Index === N - 1) {
+                transpose(Faces[KERNEL[Face].oppositeFace]);
+                invertRows(Faces[KERNEL[Face].oppositeFace]);
+
+                moveLayerSlicesLeft(Face, Index);
+                continue;
+            }
+    
+            moveLayerSlicesRight(Face, Index);
+        }
+        else if (direction === 'left') {
+            if (Index === 0) {
+                invertRows(Faces[Face]);
+                transpose(Faces[Face]);
+            }
+            else if (Index === N - 1) {
+                invertRows(Faces[KERNEL[Face].oppositeFace]);
+                transpose(Faces[KERNEL[Face].oppositeFace]);
+
+                moveLayerSlicesRight(Face, Index);
+                continue;
+            }
+            
+            moveLayerSlicesLeft(Face, Index);
+        }
+    }
+}
+
+function moveLayerSlicesRight(face, index) {
+
+    const adj = KERNEL[face].adjacentFaces;
+    for (let i = 0; i < adj.length - 1; i++) {
+        swapFaceSlices(
+            Faces[adj[i]], 
+            Faces[adj[i + 1]], 
+            KERNEL[face][adj[i]](index), 
+            KERNEL[face][adj[i + 1]](index));
+    }
+}
+
+function moveLayerSlicesLeft(face, index) {
+
+    const adj = KERNEL[face].adjacentFaces;
+    for (let i = adj.length - 1; i > 0; i--) {
+        swapFaceSlices(
+            Faces[adj[i]], 
+            Faces[adj[i - 1]], 
+            KERNEL[face][adj[i]](index), 
+            KERNEL[face][adj[i - 1]](index));
+    }
+}
+
 
 function fixChange() {
-    if (previousAngle.has(Face) == false) {
-        previousAngle.set(Face, 0);
-    }
 
-    const dangle = Angle - previousAngle.get(Face);
+    const previousAngle = KERNEL[Face].layerPreviousAngles[Index];
+    const dangle = Angle - previousAngle;
 
     console.log('angle: ' + dangle);
 
     if (Math.abs(dangle) % 90 !== 0) {
         console.log('direction: ' + (dangle < 0 ? 'left' : dangle > 0 ? 'right' : 'no change'));
-        previousAngle.set(Face, Angle);
         return;
     }
 
@@ -425,63 +357,10 @@ function fixChange() {
     while (ROTATOR.children.length > 0) CUBE.attach(ROTATOR.children[0]);
 
     if (direction !== 'no change') {
-        if (Face === 'F') {
-            saveChange(
-                Front, 
-                direction, countOfRotations, 
-                moveSlicesRightAroundFront, moveSlicesLeftAroundFront);
-        }
-        else if (Face === 'B') {
-            saveChange(
-                Back,
-                direction, countOfRotations,
-                moveSlicesRightAroundBack, moveSlicesLeftAroundBack);
-        }
-        else if (Face == 'R') {
-            saveChange(
-                Right,
-                direction, countOfRotations,
-                moveSlicesRightAroundRight, moveSlicesLeftAroundRight);
-        }
-        else if (Face == 'L') {
-            saveChange(
-                Left,
-                direction, countOfRotations,
-                moveSlicesRightAroundLeft, moveSlicesLeftAroundLeft);
-        }
-        else if (Face === 'U') {
-            saveChange(
-                Up,
-                direction, countOfRotations,
-                moveSlicesRightAroundUp, moveSlicesLeftAroundUp);
-        }
-        else if (Face === 'D') {
-            saveChange(
-                Down,
-                direction, countOfRotations,
-                moveSlicesRightAroundDown, moveSlicesLeftAroundDown);
-        }
-        else if (Face === 'F1') {
-            saveChange(
-                null,
-                direction, countOfRotations,
-                moveSlicesRightAroundF1, moveSlicesLeftAroundF1);
-        }
-        else if (Face === 'R1') {
-            saveChange(
-                null,
-                direction, countOfRotations,
-                moveSlicesRightAroundR1, moveSlicesLeftAroundR1);
-        }
-        else if (Face === 'U1') {
-            saveChange(
-                null,
-                direction, countOfRotations,
-                moveSlicesRightAroundU1, moveSlicesLeftAroundU1);
-        }
+        saveChange(direction, countOfRotations);
     }
 
-    previousAngle.set(Face, Angle);
+    KERNEL[Face].layerPreviousAngles[Index] = Angle;
 }
 
 
@@ -489,17 +368,6 @@ const controller = new function() {
     this.x = 0;
     this.y = 0;
     this.z = 0;
-
-    this.F = 0;
-    this.B = 0;
-    this.R = 0;
-    this.L = 0;
-    this.U = 0;
-    this.D = 0;
-
-    this.F1 = 0;
-    this.U1 = 0;
-    this.R1 = 0;
 
     this.fixChange = false;
 }();
@@ -515,17 +383,12 @@ panel.add(controller, 'fixChange', true, false).onChange(function() {
     }
 });
 
-panel.add(controller, 'F', -180, 180, 30).onChange(() => rotateLayer('F', 0, -controller.F) );
-panel.add(controller, 'F1', -180, 180, 30).onChange(() => rotateLayer('F', 1, -controller.F1) );
-panel.add(controller, 'B', -180, 180, 30).onChange(() => rotateLayer('F', N - 1, controller.B) );
-
-panel.add(controller, 'R', -180, 180, 30).onChange(() => rotateLayer('R', 0, -controller.R) );
-panel.add(controller, 'R1', -180, 180, 30).onChange(() => rotateLayer('R', 1, -controller.R1) );
-panel.add(controller, 'L', -180, 180, 30).onChange(() => rotateLayer('R', N - 1, controller.L) );
-
-panel.add(controller, 'U', -180, 180, 30).onChange(() => rotateLayer('U', 0, -controller.U) );
-panel.add(controller, 'U1', -180, 180, 30).onChange(() => rotateLayer('U', 1, -controller.U1) );
-panel.add(controller, 'D', -180, 180, 30).onChange(() => rotateLayer('U', N - 1, controller.D) );
+['F', 'R', 'U'].forEach(face => {
+    for (let i = 0; i < N; i++) {
+        controller[face + i] = 0;
+        panel.add(controller, face + i, -180, 180, 30).onChange(() => rotateLayer(face, i, controller[face + i]));
+    }
+});
 
 
 
