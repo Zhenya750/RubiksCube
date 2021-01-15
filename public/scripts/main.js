@@ -393,12 +393,11 @@ panel.add(controller, 'fixChange', true, false).onChange(function() {
 
 
 // update each frame
-function update() {
+(function update() {
     requestAnimationFrame(update);
     renderer.render(scene, camera);
 
     controls.update();
-}
-update();
+})();
 
 
