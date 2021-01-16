@@ -63,8 +63,8 @@ function createFace(color) {
             const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry));
             plane.add(wireframe);
 
-            const normals = new THREE.AxesHelper(0.3);
-            plane.add(normals);
+            // const normals = new THREE.AxesHelper(0.3);
+            // plane.add(normals);
 
             plane.position.x = x * planeSize;
             plane.position.y = y * planeSize;
@@ -391,12 +391,143 @@ panel.add(controller, 'fixChange', true, false).onChange(function() {
 });
 
 
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const coordPlane = createCoordinatePlane();
+
+function getDirection(x, y) {
+    if (Math.abs(x) <= y) return 'Up';
+    if (-Math.abs(x) >= y) return 'Down';
+    if (x >= Math.abs(y)) return 'Right';
+    if (x <= -Math.abs(y)) return 'Left';
+}
+
+function createCoordinatePlane() {
+    const geometry = new THREE.PlaneGeometry(1.2, 1.2);
+    const material = new THREE.MeshPhongMaterial({
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 0.5
+    });
+
+    const plane = new THREE.Mesh(geometry, material);
+    const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry));
+    plane.add(wireframe);
+
+    const axes = new THREE.AxesHelper(0.5);
+    plane.add(axes);
+
+    return plane;
+}
+
+function attachCoordinatePlane(face, object, intersectionPoint) {
+    if (coordPlane) {
+        CUBE.add(coordPlane);
+        coordPlane.position.set(0, 0, 0);
+        coordPlane.rotation.set(0, 0, 0);
+
+        object.attach(coordPlane);
+        coordPlane.position.x = intersectionPoint.x;
+        coordPlane.position.y = intersectionPoint.y;
+        coordPlane.position.z = intersectionPoint.z;
+
+        switch (face) {
+            case 'U':
+                coordPlane.rotateX(THREE.MathUtils.degToRad(-90));
+                break;
+
+            case 'D':
+                coordPlane.rotateX(THREE.MathUtils.degToRad(90));
+                break;
+
+            case 'R':
+                coordPlane.rotateY(THREE.MathUtils.degToRad(90));
+                break;
+
+            case 'L':
+                coordPlane.rotateY(THREE.MathUtils.degToRad(-90));
+                break;
+
+            case 'F':
+                break;
+
+            case 'B':
+                coordPlane.rotateY(THREE.MathUtils.degToRad(180));
+                break;
+        }
+    }
+}
+
+function onMouseMove(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(coordPlane);
+
+    if (intersects.length > 0) {
+        
+        const point = coordPlane.worldToLocal(intersects[0].point);
+
+        if (Math.abs(point.x) > 0 || Math.abs(point.y) > 0) {
+            console.log(point);
+            console.log(getDirection(point.x, point.y))
+        }
+    }
+}
+
+document.addEventListener('mouseup', () => {
+    console.log('mouseup');
+
+    window.removeEventListener('mousemove', onMouseMove);
+    
+    controls.enabled = true;
+
+    if (coordPlane.parent) coordPlane.parent.remove(coordPlane);
+
+    // animation ...
+
+}, false);
+
+// In OrbitControls.js:
+// inside method OnMouseDown( event ):
+// event.preventDefault is commented to make this listener work
+document.addEventListener('mousedown', (event) => {
+    console.log('mouesdown');
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(CUBE.children);
+
+    if (intersects.length > 0) {
+
+        // do not let the camera rotation while interacting with the cube
+        controls.enabled = false;
+
+        const obj = intersects[0].object;
+        const point = obj.worldToLocal(intersects[0].point);
+        
+        for (let key in Faces) {
+            
+            const index = Faces[key].indexOf(obj);
+
+            if (index > -1) {
+                console.log('face: ' + key + ' index: ' + index);
+                attachCoordinatePlane(key, obj, point);
+
+                window.addEventListener('mousemove', onMouseMove, false);
+                break;
+            }
+        }
+    }
+}, false);
 
 // update each frame
 (function update() {
     requestAnimationFrame(update);
-    renderer.render(scene, camera);
-
+    renderer.render(scene, camera);    
     controls.update();
 })();
 
