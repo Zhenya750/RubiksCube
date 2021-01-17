@@ -420,7 +420,7 @@ function createCoordinatePlane() {
     return plane;
 }
 
-function attachCoordinatePlane(face, object, intersectionPoint) {
+function setCoordinatePlane(face, object, intersectionPoint) {
     if (coordPlane) {
         CUBE.add(coordPlane);
         coordPlane.position.set(0, 0, 0);
@@ -455,6 +455,8 @@ function attachCoordinatePlane(face, object, intersectionPoint) {
                 coordPlane.rotateY(THREE.MathUtils.degToRad(180));
                 break;
         }
+
+        CUBE.attach(coordPlane);
     }
 }
 
@@ -503,7 +505,7 @@ document.addEventListener('mousedown', (event) => {
 
     if (intersects.length > 0) {
 
-        // do not let the camera rotation while interacting with the cube
+        // do not let the camera rotate while interacting with the cube
         controls.enabled = false;
 
         const obj = intersects[0].object;
@@ -515,7 +517,7 @@ document.addEventListener('mousedown', (event) => {
 
             if (index > -1) {
                 console.log('face: ' + key + ' index: ' + index);
-                attachCoordinatePlane(key, obj, point);
+                setCoordinatePlane(key, obj, point);
 
                 window.addEventListener('mousemove', onMouseMove, false);
                 break;
