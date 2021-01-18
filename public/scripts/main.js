@@ -334,7 +334,6 @@ function moveLayerSlicesLeft(face, index) {
     }
 }
 
-
 function fixChange() {
 
     const previousAngle = KERNEL[Face].layerPreviousAngles[Index];
@@ -372,6 +371,7 @@ const controller = new function() {
     this.fixChange = false;
 }();
 
+// controller panel
 const panel = new gui.GUI();
 panel.add(controller, 'x', -180, 180).onChange(() => rotateCubeX(controller.x));
 panel.add(controller, 'y', -180, 180).onChange(() => rotateCubeY(controller.y));
@@ -391,32 +391,43 @@ panel.add(controller, 'fixChange', true, false).onChange(function() {
 });
 
 
+// drag controller
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const coordPlane = createCoordinatePlane();
 
+let canCompleteLayerRotation = false;
+let wasLayerRotatedByMouse = false;
+
+const rotCtrl = {
+    side         : '',
+    indexOfPlane : -1,
+    direction    : '',
+    counter      : 0
+}
+
+
 function getDirection(x, y) {
-    if (Math.abs(x) <= y) return 'Up';
-    if (-Math.abs(x) >= y) return 'Down';
-    if (x >= Math.abs(y)) return 'Right';
-    if (x <= -Math.abs(y)) return 'Left';
+    if (Math.abs(x) <= y || -Math.abs(x) >= y) return 'Y';
+    if (x >= Math.abs(y) || x <= -Math.abs(y)) return 'X';
 }
 
 function createCoordinatePlane() {
-    const geometry = new THREE.PlaneGeometry(1.2, 1.2);
+    const geometry = new THREE.PlaneGeometry(100, 100);
     const material = new THREE.MeshPhongMaterial({
         side: THREE.DoubleSide,
         polygonOffset: true,
-        polygonOffsetFactor: 0.5
+        polygonOffsetFactor: 0.5,
+        transparent: true,
+        opacity: 0
     });
 
     const plane = new THREE.Mesh(geometry, material);
-    const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry));
-    plane.add(wireframe);
+    // const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry));
+    // plane.add(wireframe);
 
-    const axes = new THREE.AxesHelper(0.5);
-    plane.add(axes);
-
+    // const axes = new THREE.AxesHelper(0.5);
+    // plane.add(axes);
     return plane;
 }
 
@@ -471,24 +482,139 @@ function onMouseMove(event) {
         
         const point = coordPlane.worldToLocal(intersects[0].point);
 
-        if (Math.abs(point.x) > 0 || Math.abs(point.y) > 0) {
-            console.log(point);
-            console.log(getDirection(point.x, point.y))
+        if (rotCtrl.counter < 5) {
+            if (Math.abs(point.x) > 0 || Math.abs(point.y) > 0) {
+                console.log(point);
+                console.log(getDirection(point.x, point.y))
+                rotCtrl.counter++
+                rotCtrl.direction = getDirection(point.x, point.y);
+            }
         }
+        else {
+            const row = Math.floor(rotCtrl.indexOfPlane / N);
+            const col = rotCtrl.indexOfPlane % N;
+            const factor = 20;
+
+            if (rotCtrl.side === 'F') {
+                if (rotCtrl.direction === 'Y') {
+                    const deg = point.y * factor;
+                    const angle = KERNEL['R'].layerPreviousAngles[N - col - 1];
+                    rotateLayer('R', N - col - 1, angle + (col > 0 ? deg : -deg));
+                }
+                else if (rotCtrl.direction === 'X') {
+                    const deg = point.x * factor;
+                    const angle = KERNEL['U'].layerPreviousAngles[row];
+                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
+                }
+            }
+            else if (rotCtrl.side === 'B') {
+                if (rotCtrl.direction === 'Y') {
+                    const deg = point.y * factor;
+                    const angle = KERNEL['R'].layerPreviousAngles[col];
+                    rotateLayer('R', col, angle + (col < N - 1 ? -deg : deg));
+                }
+                else if (rotCtrl.direction === 'X') {
+                    const deg = point.x * factor;
+                    const angle = KERNEL['U'].layerPreviousAngles[row];
+                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
+                }
+            }
+            else if (rotCtrl.side === 'R') {
+                if (rotCtrl.direction === 'Y') {
+                    const deg = point.y * factor;
+                    const angle = KERNEL['F'].layerPreviousAngles[col];
+                    rotateLayer('F', col, angle + (col < N - 1 ? -deg : deg));
+                }
+                else if (rotCtrl.direction === 'X') {
+                    const deg = point.x * factor;
+                    const angle = KERNEL['U'].layerPreviousAngles[row];
+                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
+                }
+            }
+            else if (rotCtrl.side === 'L') {
+                if (rotCtrl.direction === 'Y') {
+                    const deg = point.y * factor;
+                    const angle = KERNEL['F'].layerPreviousAngles[N - col - 1];
+                    rotateLayer('F', N - col - 1, angle + (col > 0 ? deg : -deg));
+                }
+                else if (rotCtrl.direction === 'X') {
+                    const deg = point.x * factor;
+                    const angle = KERNEL['U'].layerPreviousAngles[row];
+                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
+                }
+            }
+            else if (rotCtrl.side === 'U') {
+                if (rotCtrl.direction === 'Y') {
+                    const deg = point.y * factor;
+                    const angle = KERNEL['R'].layerPreviousAngles[N - col - 1];
+                    rotateLayer('R', N - col - 1, angle + (col > 0 ? deg : -deg));
+                }
+                else if (rotCtrl.direction === 'X') {
+                    const deg = point.x * factor;
+                    const angle = KERNEL['F'].layerPreviousAngles[N - row - 1];
+                    rotateLayer('F', N - row - 1, angle + (row > 0 ? deg : -deg));
+                }
+            }
+            else if (rotCtrl.side === 'D') {
+                if (rotCtrl.direction === 'Y') {
+                    const deg = point.y * factor;
+                    const angle = KERNEL['R'].layerPreviousAngles[N - col - 1];
+                    rotateLayer('R', N - col - 1, angle + (col > 0 ? deg : -deg));
+                }
+                else if (rotCtrl.direction === 'X') {
+                    const deg = point.x * factor;
+                    const angle = KERNEL['F'].layerPreviousAngles[row];
+                    rotateLayer('F', row, angle + (row < N - 1 ? -deg : deg));
+                }
+            }
+
+            wasLayerRotatedByMouse = true;
+        }
+    }
+}
+
+const targetAngle = {
+    angle        : 0,
+    countOfSteps : 0,
+    step         : 0
+}
+
+function getTargetAngle(positiveStep) {
+    const sign = Angle >= 0 ? 1 : -1;
+    const alpha = Math.abs(Angle);
+
+    const leftTarget = 90 * Math.floor(alpha / 90);
+    const rightTarget = 90 * Math.ceil(alpha / 90);
+
+    const leftDelta = alpha - leftTarget;
+    const rightDelta = rightTarget - alpha;
+
+    if (leftDelta <= rightDelta) {
+        targetAngle.angle = leftTarget * sign;
+        targetAngle.countOfSteps = Math.floor(leftDelta / positiveStep);
+        targetAngle.step = positiveStep * -sign;
+    }
+    else {
+        targetAngle.angle = rightTarget * sign;
+        targetAngle.countOfSteps = Math.floor(rightDelta / positiveStep);
+        targetAngle.step = positiveStep * sign;
     }
 }
 
 document.addEventListener('mouseup', () => {
     console.log('mouseup');
-
     window.removeEventListener('mousemove', onMouseMove);
     
+    if (wasLayerRotatedByMouse) {  
+        getTargetAngle(3);
+        wasLayerRotatedByMouse = false;
+        canCompleteLayerRotation = true;
+    }
+
+    rotCtrl.counter = 0;
     controls.enabled = true;
 
     if (coordPlane.parent) coordPlane.parent.remove(coordPlane);
-
-    // animation ...
-
 }, false);
 
 // In OrbitControls.js:
@@ -500,37 +626,61 @@ document.addEventListener('mousedown', (event) => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(CUBE.children);
-
-    if (intersects.length > 0) {
-
-        // do not let the camera rotate while interacting with the cube
-        controls.enabled = false;
-
-        const obj = intersects[0].object;
-        const point = obj.worldToLocal(intersects[0].point);
-        
-        for (let key in Faces) {
+    if (canCompleteLayerRotation === false) {
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(CUBE.children);
+    
+        if (intersects.length > 0) {
+    
+            // do not let the camera rotate while interacting with the cube
+            controls.enabled = false;
+    
+            const obj = intersects[0].object;
+            const point = obj.worldToLocal(intersects[0].point);
             
-            const index = Faces[key].indexOf(obj);
-
-            if (index > -1) {
-                console.log('face: ' + key + ' index: ' + index);
-                setCoordinatePlane(key, obj, point);
-
-                window.addEventListener('mousemove', onMouseMove, false);
-                break;
+            for (let key in Faces) {
+                
+                const index = Faces[key].indexOf(obj);
+    
+                if (index > -1) {
+                    console.log('face: ' + key + ' index: ' + index);
+                    setCoordinatePlane(key, obj, point);
+    
+                    rotCtrl.indexOfPlane = index;
+                    rotCtrl.side = key;
+    
+                    window.addEventListener('mousemove', onMouseMove, false);
+                    break;
+                }
             }
         }
     }
+
 }, false);
+
+function completeLayerRotation() {
+    if (targetAngle.countOfSteps > 0) {
+        Angle += targetAngle.step;
+        targetAngle.countOfSteps--;
+        rotateLayer(Face, Index, Angle);
+    }
+    else {
+        Angle = targetAngle.angle;
+        canCompleteLayerRotation = false;
+        rotateLayer(Face, Index, Angle);
+        fixChange();
+    }
+}
+
+
 
 // update each frame
 (function update() {
     requestAnimationFrame(update);
     renderer.render(scene, camera);    
     controls.update();
+
+    if (canCompleteLayerRotation) completeLayerRotation();
 })();
 
 
