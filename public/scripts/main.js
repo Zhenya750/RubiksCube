@@ -33,7 +33,7 @@ function createLight(x, y, z) {
 createLight(-5, 5, 5);
 createLight(5, -5, -5);
 
-const N = 5;
+const N = 3;
 
 const WHITE  = 0xffffff;
 const ORANGE = 0xf4844c;
@@ -495,77 +495,43 @@ function onMouseMove(event) {
             const col = rotCtrl.indexOfPlane % N;
             const factor = 20;
 
-            if (rotCtrl.side === 'F') {
-                if (rotCtrl.direction === 'Y') {
-                    const deg = point.y * factor;
-                    const angle = KERNEL['R'].layerPreviousAngles[N - col - 1];
-                    rotateLayer('R', N - col - 1, angle + (col > 0 ? deg : -deg));
+            const obj = {
+                F : {
+                    X : { face : 'U', indexOfLayer : row,         isOppositeLayer : row === N - 1 },
+                    Y : { face : 'R', indexOfLayer : N - col - 1, isOppositeLayer : col !== 0 }
+                },
+            
+                B : {
+                    X : { face : 'U', indexOfLayer : row, isOppositeLayer : row === N - 1 },
+                    Y : { face : 'R', indexOfLayer : col, isOppositeLayer : col === N - 1 }
+                },
+            
+                U : {
+                    X : { face : 'F', indexOfLayer : N - row - 1, isOppositeLayer : row !== 0 },
+                    Y : { face : 'R', indexOfLayer : N - col - 1, isOppositeLayer : col !== 0 }
+                },
+            
+                D : {
+                    X : { face : 'F', indexOfLayer : row,         isOppositeLayer : row === N - 1 },
+                    Y : { face : 'R', indexOfLayer : N - col - 1, isOppositeLayer : col !== 0 }
+                },
+            
+                R : {
+                    X : { face : 'U', indexOfLayer : row, isOppositeLayer : row === N - 1 },
+                    Y : { face : 'F', indexOfLayer : col, isOppositeLayer : col === N - 1 }
+                },
+            
+                L : {
+                    X : { face : 'U', indexOfLayer : row, isOppositeLayer : row === N - 1 },
+                    Y : { face : 'F', indexOfLayer : N - col - 1, isOppositeLayer : col !== 0 }
                 }
-                else if (rotCtrl.direction === 'X') {
-                    const deg = point.x * factor;
-                    const angle = KERNEL['U'].layerPreviousAngles[row];
-                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
-                }
-            }
-            else if (rotCtrl.side === 'B') {
-                if (rotCtrl.direction === 'Y') {
-                    const deg = point.y * factor;
-                    const angle = KERNEL['R'].layerPreviousAngles[col];
-                    rotateLayer('R', col, angle + (col < N - 1 ? -deg : deg));
-                }
-                else if (rotCtrl.direction === 'X') {
-                    const deg = point.x * factor;
-                    const angle = KERNEL['U'].layerPreviousAngles[row];
-                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
-                }
-            }
-            else if (rotCtrl.side === 'R') {
-                if (rotCtrl.direction === 'Y') {
-                    const deg = point.y * factor;
-                    const angle = KERNEL['F'].layerPreviousAngles[col];
-                    rotateLayer('F', col, angle + (col < N - 1 ? -deg : deg));
-                }
-                else if (rotCtrl.direction === 'X') {
-                    const deg = point.x * factor;
-                    const angle = KERNEL['U'].layerPreviousAngles[row];
-                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
-                }
-            }
-            else if (rotCtrl.side === 'L') {
-                if (rotCtrl.direction === 'Y') {
-                    const deg = point.y * factor;
-                    const angle = KERNEL['F'].layerPreviousAngles[N - col - 1];
-                    rotateLayer('F', N - col - 1, angle + (col > 0 ? deg : -deg));
-                }
-                else if (rotCtrl.direction === 'X') {
-                    const deg = point.x * factor;
-                    const angle = KERNEL['U'].layerPreviousAngles[row];
-                    rotateLayer('U', row, angle + (row < N - 1 ? -deg : deg));
-                }
-            }
-            else if (rotCtrl.side === 'U') {
-                if (rotCtrl.direction === 'Y') {
-                    const deg = point.y * factor;
-                    const angle = KERNEL['R'].layerPreviousAngles[N - col - 1];
-                    rotateLayer('R', N - col - 1, angle + (col > 0 ? deg : -deg));
-                }
-                else if (rotCtrl.direction === 'X') {
-                    const deg = point.x * factor;
-                    const angle = KERNEL['F'].layerPreviousAngles[N - row - 1];
-                    rotateLayer('F', N - row - 1, angle + (row > 0 ? deg : -deg));
-                }
-            }
-            else if (rotCtrl.side === 'D') {
-                if (rotCtrl.direction === 'Y') {
-                    const deg = point.y * factor;
-                    const angle = KERNEL['R'].layerPreviousAngles[N - col - 1];
-                    rotateLayer('R', N - col - 1, angle + (col > 0 ? deg : -deg));
-                }
-                else if (rotCtrl.direction === 'X') {
-                    const deg = point.x * factor;
-                    const angle = KERNEL['F'].layerPreviousAngles[row];
-                    rotateLayer('F', row, angle + (row < N - 1 ? -deg : deg));
-                }
+            };
+
+            if (rotCtrl.side) {
+                const deg = (rotCtrl.direction === 'X' ? point.x : point.y) * factor;
+                const touchInfo = obj[rotCtrl.side][rotCtrl.direction];
+                const angle = KERNEL[touchInfo.face].layerPreviousAngles[touchInfo.indexOfLayer];
+                rotateLayer(touchInfo.face, touchInfo.indexOfLayer, angle + (touchInfo.isOppositeLayer ? deg : -deg));
             }
 
             wasLayerRotatedByMouse = true;
