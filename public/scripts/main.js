@@ -33,7 +33,7 @@ function createLight(x, y, z) {
 createLight(-5, 5, 5);
 createLight(5, -5, -5);
 
-const N = 3;
+const N = 5;
 
 const WHITE  = 0xffffff;
 const ORANGE = 0xf4844c;
@@ -41,35 +41,47 @@ const RED    = 0xe14343;
 const YELLOW = 0xebe457;
 const BLUE   = 0x3a49ee;
 const GREEN  = 0x37cd2f;
+const BLACK  = 0x000000;
 
-
-function createFace(color) {
+// TODO: - create a certain layer for planes only (for raycast)
+function createFace(color, backgroundColor) {
     const group = new THREE.Group();
     const planeSize = 1;
+    const padding = planeSize / 7;
 
     const k = (N - 1) / 2;
 
     for (let y = k; y >= -k; y--) {
         for (let x = -k; x <= k; x++) {
-            const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+            const backgroundGeometry = new THREE.PlaneGeometry(planeSize, planeSize);
+            const backgroundMaterial = new THREE.MeshPhongMaterial({
+                color: backgroundColor,
+                side: THREE.FrontSide,
+                polygonOffset: true,
+                polygonOffsetFactor: 2
+            });
+            const backgroundPlane = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+
+            const geometry = new THREE.PlaneGeometry(planeSize - padding, planeSize - padding);
             const material = new THREE.MeshPhongMaterial({
                 color: color,
-                side: THREE.DoubleSide,
+                side: THREE.FrontSide,
                 polygonOffset: true,
-                polygonOffsetFactor: 1
+                polygonOffsetFactor: 1.8
             });
             const plane = new THREE.Mesh(geometry, material);
 
-            const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry));
-            plane.add(wireframe);
+            backgroundPlane.add(plane);
 
+            // const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(backgroundGeometry));
+            // backgroundPlane.add(wireframe);
             // const normals = new THREE.AxesHelper(0.3);
             // plane.add(normals);
 
-            plane.position.x = x * planeSize;
-            plane.position.y = y * planeSize;
+            backgroundPlane.position.x = x * planeSize;
+            backgroundPlane.position.y = y * planeSize;
 
-            group.add(plane);
+            group.add(backgroundPlane);
         }
     }
 
@@ -78,32 +90,33 @@ function createFace(color) {
 
 const CUBE = new THREE.Group();
 
+// TODO: create black planes between layers
 (function setCubeFaces() {
-    const UP = createFace(YELLOW);
+    const UP = createFace(YELLOW, BLACK);
     UP.rotateX(THREE.MathUtils.degToRad(-90));
     UP.position.y = N / 2;
     while (UP.children.length > 0) CUBE.attach(UP.children[0]);
     
-    const LEFT = createFace(ORANGE);
+    const LEFT = createFace(ORANGE, BLACK);
     LEFT.rotateY(THREE.MathUtils.degToRad(-90));
     LEFT.position.x = -N / 2;
     while (LEFT.children.length > 0) CUBE.attach(LEFT.children[0]);
     
-    const BACK = createFace(GREEN);
+    const BACK = createFace(GREEN, BLACK);
     BACK.rotateY(THREE.MathUtils.degToRad(180));
     BACK.position.z = -N / 2;
     while (BACK.children.length > 0) CUBE.attach(BACK.children[0]);
     
-    const RIGHT = createFace(RED);
+    const RIGHT = createFace(RED, BLACK);
     RIGHT.rotateY(THREE.MathUtils.degToRad(90));
     RIGHT.position.x = N / 2;
     while (RIGHT.children.length > 0) CUBE.attach(RIGHT.children[0]);
     
-    const FRONT = createFace(BLUE);
+    const FRONT = createFace(BLUE, BLACK);
     FRONT.position.z = N / 2;
     while (FRONT.children.length > 0) CUBE.attach(FRONT.children[0]);
     
-    const DOWN = createFace(WHITE)
+    const DOWN = createFace(WHITE, BLACK);
     DOWN.rotateX(THREE.MathUtils.degToRad(90));
     DOWN.position.y = -N / 2;
     while (DOWN.children.length > 0) CUBE.attach(DOWN.children[0]);
@@ -467,10 +480,13 @@ function setCoordinatePlane(face, object, intersectionPoint) {
                 break;
         }
 
+        // coordinate plane should be in cube local space in order not 
+        // to move while rotating a layer
         CUBE.attach(coordPlane);
     }
 }
 
+// FIXME: make layer movement more smooth
 function onMouseMove(event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -495,7 +511,7 @@ function onMouseMove(event) {
             const col = rotCtrl.indexOfPlane % N;
             const factor = 20;
 
-            const obj = {
+            const faceTouchInfo = {
                 F : {
                     X : { face : 'U', indexOfLayer : row,         isOppositeLayer : row === N - 1 },
                     Y : { face : 'R', indexOfLayer : N - col - 1, isOppositeLayer : col !== 0 }
@@ -529,12 +545,12 @@ function onMouseMove(event) {
 
             if (rotCtrl.side) {
                 const deg = (rotCtrl.direction === 'X' ? point.x : point.y) * factor;
-                const touchInfo = obj[rotCtrl.side][rotCtrl.direction];
+                const touchInfo = faceTouchInfo[rotCtrl.side][rotCtrl.direction];
                 const angle = KERNEL[touchInfo.face].layerPreviousAngles[touchInfo.indexOfLayer];
-                rotateLayer(touchInfo.face, touchInfo.indexOfLayer, angle + (touchInfo.isOppositeLayer ? deg : -deg));
-            }
 
-            wasLayerRotatedByMouse = true;
+                rotateLayer(touchInfo.face, touchInfo.indexOfLayer, angle + (touchInfo.isOppositeLayer ? deg : -deg));
+                wasLayerRotatedByMouse = true;
+            }
         }
     }
 }
@@ -545,7 +561,7 @@ const targetAngle = {
     step         : 0
 }
 
-function getTargetAngle(positiveStep) {
+function setTargetAngle(positiveStep) {
     const sign = Angle >= 0 ? 1 : -1;
     const alpha = Math.abs(Angle);
 
@@ -572,7 +588,7 @@ document.addEventListener('mouseup', () => {
     window.removeEventListener('mousemove', onMouseMove);
     
     if (wasLayerRotatedByMouse) {  
-        getTargetAngle(3);
+        setTargetAngle(3);
         wasLayerRotatedByMouse = false;
         canCompleteLayerRotation = true;
     }
