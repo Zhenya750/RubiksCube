@@ -90,7 +90,62 @@ function createFace(color, backgroundColor) {
 
 const CUBE = new THREE.Group();
 
-// TODO: create black planes between layers
+function createPlanesBetweenLayers(face) {
+
+    const planeSize = 1 * N;
+    let planesBetweenLayers = [];
+
+    const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+    const material = new THREE.MeshPhongMaterial({
+        color: 0xff0000,
+        side: THREE.FrontSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 3,
+    });
+
+    let offset = N / 2;
+    
+    let axis = '';
+    if (face === 'F') axis = 'z'
+    if (face === 'R') axis = 'x';
+    if (face === 'U') axis = 'y';
+    
+    for (let index = 0; index < N; index++) {
+        let plane1 = null;
+        if (Math.abs(offset) < N / 2) {
+            plane1 = new THREE.Mesh(geometry, material);
+            plane1.position[axis] = offset;
+
+            if (face === 'U') plane1.rotateX(-Math.PI / 2);
+            if (face === 'R') plane1.rotateY(Math.PI / 2);
+        }
+        
+        offset--;
+        
+        let plane2 = null;
+        if (Math.abs(offset) < N / 2) {
+            plane2 = new THREE.Mesh(geometry, material);
+            plane2.position[axis] = offset;
+
+            if (face === 'U') plane2.rotateX(-Math.PI / 2);
+            if (face === 'R') plane2.rotateY(Math.PI / 2);
+
+            plane2.rotateY(Math.PI);
+        }
+
+        if (plane1) {
+            if (plane2) plane1.attach(plane2);
+            planesBetweenLayers.push(plane1);
+        }
+        else {
+            planesBetweenLayers.push(plane2);
+        }
+    }
+
+    return planesBetweenLayers;
+};
+
+
 (function setCubeFaces() {
     const UP = createFace(YELLOW, BLACK);
     UP.rotateX(THREE.MathUtils.degToRad(-90));
@@ -154,6 +209,38 @@ const Faces = {
     D : Down,
     L : Left,
     R : Right
+};
+
+const PlanesBetweenLayers = {
+    F : createPlanesBetweenLayers('F'),
+    R : createPlanesBetweenLayers('R'),
+    U : createPlanesBetweenLayers('U')
+};
+
+(function setPlanesBetweenLayers() {
+
+    for (let key in PlanesBetweenLayers) {
+        PlanesBetweenLayers[key].forEach(plane => {
+            CUBE.attach(plane);
+            plane.visible = false;
+        });
+    }
+})();
+
+function showPlanesAroundLayer(face, index) {
+    for (let i = -1; i <= 1; i++) {
+        if (index + i >= 0 && index + i < N) {
+            PlanesBetweenLayers[face][index + i].visible = true;
+        }
+    }
+}
+
+function hidePlanesAroundLayer(face, index) {
+    for (let i = -1; i <= 1; i++) {
+        if (index + i >= 0 && index + i < N) {
+            PlanesBetweenLayers[face][index + i].visible = false;
+        }
+    }
 }
 
 const KERNEL = {
@@ -223,6 +310,9 @@ function rotateLayer(face, deep, deg) {
                 ROTATOR.attach(Faces[adj][iterator.index])
                 iterator.index += iterator.step;
             }
+
+            showPlanesAroundLayer(face, deep);
+            ROTATOR.attach(PlanesBetweenLayers[face][deep]);
         });
     }
 
@@ -366,6 +456,7 @@ function fixChange() {
     console.log('direction: ' + direction);
     console.log('\n');
 
+    hidePlanesAroundLayer(Face, Index);
     while (ROTATOR.children.length > 0) CUBE.attach(ROTATOR.children[0]);
 
     if (direction !== 'no change') {
@@ -427,8 +518,8 @@ function getDirection(x, y) {
 
 function createCoordinatePlane() {
     const geometry = new THREE.PlaneGeometry(100, 100);
-    const material = new THREE.MeshPhongMaterial({
-        side: THREE.DoubleSide,
+    const material = new THREE.MeshBasicMaterial({
+        side: THREE.FrontSide,
         polygonOffset: true,
         polygonOffsetFactor: 0.5,
         transparent: true,
@@ -436,9 +527,6 @@ function createCoordinatePlane() {
     });
 
     const plane = new THREE.Mesh(geometry, material);
-    // const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry));
-    // plane.add(wireframe);
-
     // const axes = new THREE.AxesHelper(0.5);
     // plane.add(axes);
     return plane;
