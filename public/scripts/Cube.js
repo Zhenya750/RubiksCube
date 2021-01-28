@@ -2,13 +2,15 @@ import * as THREE from './three_data/build/three.module.js';
 
 export class Cube {
 
-    WHITE  = 0xffffff;
-    ORANGE = 0xf4844c;
-    RED    = 0xe14343;
-    YELLOW = 0xebe457;
-    BLUE   = 0x3a49ee;
-    GREEN  = 0x37cd2f;
-    BLACK  = 0x000000;
+    Colors = {
+        F  : 0x3a49ee,
+        B  : 0x37cd2f,
+        R  : 0xe14343,
+        L  : 0xf4844c,
+        U  : 0xebe457,
+        D  : 0xffffff,
+        BG : 0x000000
+    }
 
     constructor(n) {
         this.N = n;
@@ -89,31 +91,31 @@ export class Cube {
 
     #setCubeFaces() {
         const d = this.N / 2;
-        const up = this.#createFace(this.YELLOW, this.BLACK);
+        const up = this.#createFace(this.Colors.U, this.Colors.BG);
         up.rotateX(-Math.PI / 2);
         up.position.y = d;
         while (up.children.length > 0) this.ThreeObject.attach(up.children[0]);
         
-        const left = this.#createFace(this.ORANGE, this.BLACK);
+        const left = this.#createFace(this.Colors.L, this.Colors.BG);
         left.rotateY(-Math.PI / 2);
         left.position.x = -d;
         while (left.children.length > 0) this.ThreeObject.attach(left.children[0]);
         
-        const back = this.#createFace(this.GREEN, this.BLACK);
+        const back = this.#createFace(this.Colors.B, this.Colors.BG);
         back.rotateY(Math.PI);
         back.position.z = -d;
         while (back.children.length > 0) this.ThreeObject.attach(back.children[0]);
         
-        const right = this.#createFace(this.RED, this.BLACK);
+        const right = this.#createFace(this.Colors.R, this.Colors.BG);
         right.rotateY(Math.PI / 2);
         right.position.x = d;
         while (right.children.length > 0) this.ThreeObject.attach(right.children[0]);
         
-        const front = this.#createFace(this.BLUE, this.BLACK);
+        const front = this.#createFace(this.Colors.F, this.Colors.BG);
         front.position.z = d;
         while (front.children.length > 0) this.ThreeObject.attach(front.children[0]);
         
-        const down = this.#createFace(this.WHITE, this.BLACK);
+        const down = this.#createFace(this.Colors.D, this.Colors.BG);
         down.rotateX(Math.PI / 2);
         down.position.y = -d;
         while (down.children.length > 0) this.ThreeObject.attach(down.children[0]);
@@ -126,7 +128,7 @@ export class Cube {
     
         const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
         const material = new THREE.MeshPhongMaterial({
-            color: 0xff0000,
+            color: this.Colors.BG,
             side: THREE.FrontSide,
             polygonOffset: true,
             polygonOffsetFactor: 3,
