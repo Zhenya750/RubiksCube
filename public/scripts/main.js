@@ -51,32 +51,27 @@ function createFace(color, backgroundColor) {
 
     const k = (N - 1) / 2;
 
+    const backgroundGeometry = new THREE.PlaneGeometry(planeSize, planeSize);
+    const backgroundMaterial = new THREE.MeshPhongMaterial({
+        color: backgroundColor,
+        side: THREE.FrontSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 2
+    });
+
+    const foregroundGeometry = new THREE.PlaneGeometry(planeSize - padding, planeSize - padding);
+    const foregroundMaterial = new THREE.MeshPhongMaterial({
+        color: color,
+        side: THREE.FrontSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 1.8
+    });
+
     for (let y = k; y >= -k; y--) {
         for (let x = -k; x <= k; x++) {
-            const backgroundGeometry = new THREE.PlaneGeometry(planeSize, planeSize);
-            const backgroundMaterial = new THREE.MeshPhongMaterial({
-                color: backgroundColor,
-                side: THREE.FrontSide,
-                polygonOffset: true,
-                polygonOffsetFactor: 2
-            });
             const backgroundPlane = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
-
-            const geometry = new THREE.PlaneGeometry(planeSize - padding, planeSize - padding);
-            const material = new THREE.MeshPhongMaterial({
-                color: color,
-                side: THREE.FrontSide,
-                polygonOffset: true,
-                polygonOffsetFactor: 1.8
-            });
-            const plane = new THREE.Mesh(geometry, material);
-
-            backgroundPlane.add(plane);
-
-            // const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(backgroundGeometry));
-            // backgroundPlane.add(wireframe);
-            // const normals = new THREE.AxesHelper(0.3);
-            // plane.add(normals);
+            const foregroundPlane = new THREE.Mesh(foregroundGeometry, foregroundMaterial);
+            backgroundPlane.add(foregroundPlane);
 
             backgroundPlane.position.x = x * planeSize;
             backgroundPlane.position.y = y * planeSize;
@@ -184,31 +179,13 @@ CUBE.add(new THREE.AxesHelper(3));
 scene.add(CUBE);
 
 // Initial state of the cube - solved
-const Up = [];
-for (let i = 0; i < N * N; i++) Up.push(CUBE.children[i]);
-
-const Left = [];
-for (let i = N * N; i < N * N * 2; i++) Left.push(CUBE.children[i]);
-
-const Back = [];
-for (let i = N * N * 2; i < N * N * 3; i++) Back.push(CUBE.children[i]);
-
-const Right = [];
-for (let i = N * N * 3; i < N * N * 4; i++) Right.push(CUBE.children[i]);
-
-const Front = [];
-for (let i = N * N * 4; i < N * N * 5; i++) Front.push(CUBE.children[i]);
-
-const Down = [];
-for (let i = N * N * 5; i < N * N * 6; i++) Down.push(CUBE.children[i]);
-
 const Faces = {
-    F : Front,
-    B : Back,
-    U : Up,
-    D : Down,
-    L : Left,
-    R : Right
+    U : CUBE.children.slice(0,         N * N),
+    L : CUBE.children.slice(N * N,     N * N * 2),
+    B : CUBE.children.slice(N * N * 2, N * N * 3),
+    R : CUBE.children.slice(N * N * 3, N * N * 4),
+    F : CUBE.children.slice(N * N * 4, N * N * 5),
+    D : CUBE.children.slice(N * N * 5, N * N * 6)
 };
 
 const PlanesBetweenLayers = {
@@ -512,8 +489,8 @@ const rotCtrl = {
 
 
 function getDirection(x, y) {
-    if (Math.abs(x) <= y || -Math.abs(x) >= y) return 'Y';
-    if (x >= Math.abs(y) || x <= -Math.abs(y)) return 'X';
+    if (Math.abs(x) <= Math.abs(y)) return 'Y';
+    if (Math.abs(x) >= Math.abs(y)) return 'X';
 }
 
 function createCoordinatePlane() {
@@ -527,8 +504,6 @@ function createCoordinatePlane() {
     });
 
     const plane = new THREE.Mesh(geometry, material);
-    // const axes = new THREE.AxesHelper(0.5);
-    // plane.add(axes);
     return plane;
 }
 
@@ -545,26 +520,26 @@ function setCoordinatePlane(face, object, intersectionPoint) {
 
         switch (face) {
             case 'U':
-                coordPlane.rotateX(THREE.MathUtils.degToRad(-90));
+                coordPlane.rotateX(-Math.PI / 2);
                 break;
 
             case 'D':
-                coordPlane.rotateX(THREE.MathUtils.degToRad(90));
+                coordPlane.rotateX(Math.PI / 2);
                 break;
 
             case 'R':
-                coordPlane.rotateY(THREE.MathUtils.degToRad(90));
+                coordPlane.rotateY(Math.PI / 2);
                 break;
 
             case 'L':
-                coordPlane.rotateY(THREE.MathUtils.degToRad(-90));
+                coordPlane.rotateY(-Math.PI / 2);
                 break;
 
             case 'F':
                 break;
 
             case 'B':
-                coordPlane.rotateY(THREE.MathUtils.degToRad(180));
+                coordPlane.rotateY(Math.PI);
                 break;
         }
 
