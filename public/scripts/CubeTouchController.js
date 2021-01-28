@@ -14,6 +14,8 @@ export class CubeTouchController {
         this.CanCompleteLayerRotation = false;
         this.WasLayerRotatedByMouse = false;
 
+        this._wasDegOffsetSet = false;
+        this._degOffset = 0;
         this.RotCtrl = {
             face         : '',
             indexOfPlane : -1,
@@ -172,8 +174,12 @@ export class CubeTouchController {
         this.onStopTouching();
     }
 
+    
+    sensitivity() {
+        return 100 / this.Cube.N;
+    }
 
-    // FIXME: make layer movement more smooth
+
     #onMouseMove(event) {
         this.#setMouseCoordinates(event);
 
@@ -188,17 +194,23 @@ export class CubeTouchController {
                 if (Math.abs(point.x) > 0 || Math.abs(point.y) > 0) {
                     this.RotCtrl.counter++;
                     this.RotCtrl.direction = this.#getDirection(point.x, point.y);
+                    this._wasDegOffsetSet = false;
                 }
             }
             else {
                 const row = Math.floor(this.RotCtrl.indexOfPlane / this.Cube.N);
                 const col = this.RotCtrl.indexOfPlane % this.Cube.N;
-                const factor = 20;
-
+                
                 const faceTouchInfo = this.#getFaceTouchInfo(row, col);
-
+                
                 if (this.RotCtrl.face) {
-                    const deg = (this.RotCtrl.direction === 'X' ? point.x : point.y) * factor;
+                    const deg = (this.RotCtrl.direction === 'X' ? point.x : point.y) * this.sensitivity();
+                    
+                    if (this._wasDegOffsetSet === false) {
+                        this._degOffset = deg;
+                        this._wasDegOffsetSet = true;
+                    }
+
                     const info = faceTouchInfo[this.RotCtrl.face][this.RotCtrl.direction];
 
                     // TODO: hide KERNEL . . .
@@ -207,7 +219,7 @@ export class CubeTouchController {
                     this.Cube.rotateLayer(
                         info.face, 
                         info.indexOfLayer, 
-                        angle + (info.isOppositeLayer ? deg : -deg));
+                        angle + (info.isOppositeLayer ? deg - this._degOffset : -deg + this._degOffset));
 
                     this.WasLayerRotatedByMouse = true;
                 }
