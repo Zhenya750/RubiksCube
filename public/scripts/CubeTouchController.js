@@ -29,6 +29,8 @@ export class CubeTouchController {
             step         : 0
         }
 
+        this._wasTouched = false;
+
         this.Canvas.addEventListener('mousedown', (event) => {
             this.#onMouseDown(event);
         }, false);
@@ -150,6 +152,7 @@ export class CubeTouchController {
                 }
 
                 this.onStartTouching();
+                this._wasTouched = true;
             }
         }
     }
@@ -171,10 +174,13 @@ export class CubeTouchController {
         
         this.RotCtrl.counter = 0;
         
-        this.onStopTouching();
+        if (this._wasTouched) {
+            this.onStopTouching();
+            this._wasTouched = false;
+        }
     }
 
-    
+
     sensitivity() {
         return 100 / this.Cube.N;
     }
