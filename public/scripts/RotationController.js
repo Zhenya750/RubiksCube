@@ -109,7 +109,7 @@ export class RotationController {
     #trySliding() {
         if (this._canSlide) {
     
-            const slideFactor = 0.95;
+            const slideFactor = 0.9;
     
             if (Math.abs(this._deltaPoint.x) > 0.1) {
                 this._deltaPoint.x *= slideFactor;

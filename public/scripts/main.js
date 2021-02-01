@@ -5,12 +5,14 @@ import * as gui from './three_data/build/dat.gui.module.js';
 
 import { Cube } from './Cube.js';
 import { CubeTouchController } from './CubeTouchController.js';
+import { RotationController } from './RotationController.js';
 
 // init scene
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0xc2eefe);
 document.body.appendChild(renderer.domElement);
 
 // scene helpers
@@ -36,20 +38,43 @@ function createLight(x, y, z) {
 
 createLight(-5, 5, 5);
 createLight(5, -5, -5);
+createLight(5, 5, 5);
+
+const DIM = 30;
+const cube = new Cube(DIM);
+camera.position.set(DIM * 5 / 7, DIM * 5 / 7, DIM * 5 / 7);
+camera.lookAt(0, 0, 0);
 
 
-const cube = new Cube(5);
-const cubeController = new CubeTouchController(cube, renderer.domElement, camera);
+const touchController = new CubeTouchController(cube, renderer.domElement, camera);
+const rotationController = new RotationController(camera, cube.ThreeObject, renderer.domElement);
 
-cubeController.onStartTouching = () => {
+const USE_ORBITCONTROLS = false;
+
+controls.enabled = USE_ORBITCONTROLS;
+rotationController.enabled = !USE_ORBITCONTROLS;
+
+touchController.onStartTouching = () => {
     console.log('START TOUCHING');
-    // don't let camera move while interacting with the cube
-    controls.enabled = false;
+
+    if (USE_ORBITCONTROLS) {
+        // don't let camera move while interacting with the cube
+        controls.enabled = false;
+    }
+    else {
+        rotationController.enabled = false;
+    }
 }
 
-cubeController.onStopTouching = () => {
+touchController.onStopTouching = () => {
     console.log('STOP TOUCHING');
-    controls.enabled = true;
+
+    if (USE_ORBITCONTROLS) {
+        controls.enabled = true;
+    }
+    else {
+        rotationController.enabled = true;
+    }
 }
 
 scene.add(cube.ThreeObject);
@@ -58,8 +83,14 @@ scene.add(cube.ThreeObject);
 (function update() {
     requestAnimationFrame(update);
 
-    controls.update();
-    cubeController.update();
+    if (USE_ORBITCONTROLS) {
+        controls.update();
+    }
+    else {
+        rotationController.update();
+    }
+
+    touchController.update();
     
     renderer.render(scene, camera);    
 })();
