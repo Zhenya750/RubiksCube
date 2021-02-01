@@ -57,9 +57,11 @@ scene.add(cube.ThreeObject);
 // update each frame
 (function update() {
     requestAnimationFrame(update);
-    renderer.render(scene, camera);    
+
     controls.update();
     cubeController.update();
+    
+    renderer.render(scene, camera);    
 })();
 
 

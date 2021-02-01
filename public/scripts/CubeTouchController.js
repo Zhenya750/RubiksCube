@@ -118,7 +118,6 @@ export class CubeTouchController {
     onStartTouching() {}
 
 
-    // FIXME: should be called if the cube was touched
     onStopTouching() {}
 
 

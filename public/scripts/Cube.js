@@ -69,7 +69,7 @@ export class Cube {
             color: color,
             side: THREE.FrontSide,
             polygonOffset: true,
-            polygonOffsetFactor: 1.8
+            polygonOffsetFactor: 1
         });
 
         for (let y = k; y >= -k; y--) {
@@ -77,6 +77,9 @@ export class Cube {
                 const backgroundPlane = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
                 const foregroundPlane = new THREE.Mesh(foregroundGeometry, foregroundMaterial);
                 backgroundPlane.add(foregroundPlane);
+
+                // don't let background to appear through the foreground
+                foregroundPlane.position.z += 0.001;
 
                 backgroundPlane.position.x = x * planeSize;
                 backgroundPlane.position.y = y * planeSize;
