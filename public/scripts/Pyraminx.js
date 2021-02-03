@@ -187,6 +187,7 @@ const axesOfRotation = getAxesForLayersRotation(pyraminx, stateMap);
 let axis;
 
 function rotateLayer(layer, deg) {
+
     const { face, index } = layer;
 
     if (rotator.children.length === 0) {
@@ -261,8 +262,8 @@ rotator.rotateX(THREE.MathUtils.degToRad(44));
 rotator.rotateZ(THREE.MathUtils.degToRad(54));
 
 
-rotateLayer({ face: 'D', index: 2 }, 120);
-fixChanges();
+// rotateLayer({ face: 'D', index: 2 }, 120);
+// fixChanges();
 
 scene.add(pyraminx);
 
@@ -320,3 +321,53 @@ function* generateHorizontal(n, count) {
         xn++;
     }
 }
+
+
+(function setGUIController(){
+    const controller = {
+        x : 0,
+        y : 0,
+        z : 0,
+        fixChange : false
+    };
+    
+    const panel = new gui.GUI();
+    
+    panel.add(controller, 'x', -180, 180, 1).onChange(() => { 
+        pyraminx.rotation.x = THREE.MathUtils.degToRad(controller.x);
+    });
+    
+    panel.add(controller, 'y', -180, 180, 1).onChange(() => { 
+        pyraminx.rotation.y = THREE.MathUtils.degToRad(controller.y);
+    });
+    
+    panel.add(controller, 'z', -180, 180, 1).onChange(() => { 
+        pyraminx.rotation.z = THREE.MathUtils.degToRad(controller.z);
+    });
+    
+    panel.add(controller, 'fixChange', true, false).onChange(() => { 
+        if (controller.fixChange === true) {
+            fixChanges();
+        }
+    });
+    
+    const previousAngles = {};
+    
+    ['F', 'L', 'R', 'D'].forEach(face => {
+        for (let i = 0; i < dim; i++) {
+            controller[face + i] = 0;
+            previousAngles[face + i] = 0;
+    
+            panel.add(controller, face + i, -360, 360, 20).onChange(() => {
+    
+                const delta = controller[face + i] - previousAngles[face + i];
+                previousAngles[face + i] = controller[face + i];
+    
+                rotateLayer({ face: face, index: i }, delta);
+            });
+        }
+    });
+})();
+
+
+
