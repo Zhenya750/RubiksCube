@@ -1,39 +1,253 @@
 import * as THREE from './three_data/build/three.module.js';
-import { OrbitControls } from './three_data/examples/jsm/controls/OrbitControls.js';
-
 import * as gui from './three_data/build/dat.gui.module.js';
 
-// init scene
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-// renderer.setClearColor(0xc2eefe);
-document.body.appendChild(renderer.domElement);
 
-// scene helpers
-const axesHelper = new THREE.AxesHelper(3);
-scene.add(axesHelper);
+export const Pyraminx = function(dimension) {
 
-const gridHelper = new THREE.GridHelper(5, 10);
-scene.add(gridHelper);
+    const dim = dimension;
+    const pyraminx = createPyraminxThreeObject(dim);
+    const stateMap = createStateMap(pyraminx, dim);
+    const rotator = new THREE.Group();
 
-// camera
-camera.position.set(5, 5, 10);
-camera.lookAt(0, 0, 0);
-const controls = new OrbitControls(camera, renderer.domElement);
+    pyraminx.add(rotator);
+    pyraminx.updateMatrix();
+    pyraminx.updateMatrixWorld(true);
+    
+    const axesOfRotation = getAxesForLayersRotation(pyraminx, stateMap);
+    
+    const rotationInfo = {
+        layer : null,
+        axis : null,
+        deg : 0
+    };
 
-// light
-function createLight(x, y, z) {
-    const light = new THREE.DirectionalLight(0xffffff);
-    light.position.set(x, y, z);
-    const lightHelper = new THREE.DirectionalLightHelper(light, 0.5);
-    scene.add(light);
-    scene.add(lightHelper);
+
+    // private methods
+    function getGenerators(layer) {
+
+        const { face, index } = layer;
+        const count = 1 + 2 * (dim - index - 1);
+
+        let generators = null;
+
+        if (face === 'F') {
+            generators = {
+                L : generateRightDiagonal(index, count),
+                R : generateLeftDiagonal(index, count),
+                D : generateHorizontal(dim - index - 1, count)
+            }
+        }
+        else if (face === 'L') {
+            generators = {
+                F : generateLeftDiagonal(index, count),
+                R : generateRightDiagonal(index, count),
+                D : generateRightDiagonal(index, count)
+            }
+        }
+        else if (face === 'R') {
+            generators = {
+                F : generateRightDiagonal(index, count),
+                L : generateLeftDiagonal(index, count),
+                D : generateLeftDiagonal(index, count)
+            }
+        }
+        else if (face === 'D') {
+            generators = {
+                L : generateHorizontal(dim - index - 1, count),
+                R : generateHorizontal(dim - index - 1, count),
+                F : generateHorizontal(dim - index - 1, count)
+            }
+        }
+
+        return generators;
+    }
+
+
+    function getSlicesIndices(layer) {
+        const generators = getGenerators(layer);
+        const slicesIndices = { };
+    
+        for (let adjFace in generators) {
+            slicesIndices[adjFace] = Array.from(generators[adjFace]);
+        }
+    
+        if (layer.face === 'F') {
+            slicesIndices.L.reverse();
+        }
+        else if (layer.face === 'R') {
+            slicesIndices.F.reverse();
+        }
+        else if (layer.face === 'L') {
+            slicesIndices.F.reverse();
+        }
+    
+        return slicesIndices;
+    }
+
+
+    function getRightRotationCycle(layer) {
+        let cycle = [];
+    
+        if (layer.face === 'F') {
+            cycle = ['R', 'L', 'D'];
+        }
+        else if (layer.face === 'R') {
+            cycle = ['L', 'F', 'D'];
+        }
+        else if (layer.face === 'L') {
+            cycle = ['F', 'R', 'D'];
+        }
+        else if (layer.face === 'D') {
+            cycle = ['F', 'L', 'R'];
+        }
+    
+        return cycle;
+    }
+
+
+    function saveChanges(layer, direction, countOfRotations) {
+
+        countOfRotations %= 3;
+    
+        if (countOfRotations === 0) return;
+    
+        if (countOfRotations === 2) {
+            direction = direction === 'right' ? 'left' : 'right';
+            countOfRotations = 1;
+        }
+    
+        const cycle = getRightRotationCycle(layer);
+        const indices = getSlicesIndices(layer);
+    
+        if (direction === 'left') {
+            cycle.reverse();
+        }
+    
+        for (let i = 0; i < 2; i++) {
+            swapSlices(
+                cycle[i], cycle[i + 1], 
+                indices[cycle[i]], indices[cycle[i + 1]]);
+        }
+    
+        if (layer.index === 0) {
+    
+            if (direction === 'right') {
+                reverseRightDiagonals(layer.face);
+                reverseLeftDiagonals(layer.face);
+            }
+            else {
+                reverseLeftDiagonals(layer.face);
+                reverseRightDiagonals(layer.face);
+            }
+        }
+    }
+
+
+    function swapSlices(face1, face2, indices1, indices2) {
+
+        for (let i = 0; i < indices1.length; i++) {
+            const tmp = stateMap[face1][indices1[i]];
+            stateMap[face1][indices1[i]] = stateMap[face2][indices2[i]];
+            stateMap[face2][indices2[i]] = tmp;
+        }
+    }
+    
+
+    function reverseRightDiagonals(face) {
+    
+        for (let i = 0; i < dim; i++) {    
+            const count = 1 + 2 * (dim - i - 1);
+            const indices = Array.from(generateRightDiagonal(i, count));
+    
+            reverseDiagonal(stateMap[face], indices);
+        }
+    }
+
+
+    function reverseLeftDiagonals(face) {
+
+        for (let i = 0; i < dim; i++) {    
+            const count = 1 + 2 * (dim - i - 1);
+            const indices = Array.from(generateLeftDiagonal(i, count));
+    
+            reverseDiagonal(stateMap[face], indices);
+        }
+    }
+    
+
+    function reverseDiagonal(arrayOfTriangles, indices) {
+    
+        const n = indices.length;
+    
+        for (let i = 0; i < Math.floor(n / 2); i++) {
+            const tmp = arrayOfTriangles[indices[i]];
+            arrayOfTriangles[indices[i]] = arrayOfTriangles[indices[n - i - 1]];
+            arrayOfTriangles[indices[n - i - 1]] = tmp;
+        }
+    }
+
+
+    // public interface
+    this.threeObject = pyraminx;
+
+    this.dimension = dim;
+
+
+    this.rotateLayer = function(layer, deg) {
+
+        const { face, index } = layer;
+    
+        if (rotator.children.length === 0) {
+    
+            if (index === 0) {
+                stateMap[face].forEach(triangle => rotator.attach(triangle));
+            }
+    
+            let generators = getGenerators(layer);
+    
+            for (let adjFace in generators) {
+                for (let i of generators[adjFace]) {
+                    rotator.attach(stateMap[adjFace][i]);
+                }
+            }
+            
+            rotationInfo.layer = layer;
+            rotationInfo.axis = moveFromLocalToLocal(axesOfRotation[face], pyraminx, rotator);
+        }
+        
+        rotator.rotateOnAxis(rotationInfo.axis, THREE.MathUtils.degToRad(deg));
+        rotationInfo.deg += deg;
+    }
+
+
+    this.fixChanges = function() {
+    
+        const { layer, deg } = rotationInfo;
+        
+        if (Math.abs(deg) % 120 === 0) {
+            
+            const countOfRotations = (Math.abs(deg) % 360) / 120;
+    
+            const direction = deg > 0 ? 'right' : deg < 0 ? 'left' : 'no changes';
+    
+            console.log('layer: ', layer);
+            console.log('deg: ', deg);
+            console.log('direction: ', direction);
+            console.log('count: ', countOfRotations);
+            
+            while (rotator.children.length > 0) { 
+                pyraminx.attach(rotator.children[0]);
+            }
+    
+            rotationInfo.deg = 0;
+    
+            if (direction === 'right' || direction === 'left') {
+                saveChanges(layer, direction, countOfRotations);
+            }
+        }
+    }
 }
 
-createLight(-5, 5, 5);
-createLight(5, -5, -5);
 
 function createTriangle(color) {
     const geometry = new THREE.BufferGeometry();
@@ -64,6 +278,7 @@ function createTriangle(color) {
     
     return mesh;
 }
+
 
 function createFace(numberOfLayers, color) {
     
@@ -98,6 +313,7 @@ function createFace(numberOfLayers, color) {
     
     return group;
 }
+
 
 function createPyraminxThreeObject(numberOfLayers) {
     const n = numberOfLayers;
@@ -136,16 +352,18 @@ function createPyraminxThreeObject(numberOfLayers) {
     return group;
 }
 
-function createStateMap(pyraminx, dimension) {
+
+function createStateMap(pyraminxThreeObject, dimension) {
 
     const n = dimension;
     return {
-        F : pyraminx.children.slice(0,         n * n),
-        L : pyraminx.children.slice(n * n,     n * n * 2),
-        R : pyraminx.children.slice(n * n * 2, n * n * 3),
-        D : pyraminx.children.slice(n * n * 3, n * n * 4)        
+        F : pyraminxThreeObject.children.slice(0,         n * n),
+        L : pyraminxThreeObject.children.slice(n * n,     n * n * 2),
+        R : pyraminxThreeObject.children.slice(n * n * 2, n * n * 3),
+        D : pyraminxThreeObject.children.slice(n * n * 3, n * n * 4)        
     }
 }
+
 
 function getAxesForLayersRotation(pyraminx, stateMap) {
 
@@ -165,261 +383,11 @@ function getAxesForLayersRotation(pyraminx, stateMap) {
     return axes;
 }
 
+
 function moveFromLocalToLocal(vector, oldObject, newObject) {
     let v = oldObject.localToWorld(vector.clone());
     return newObject.worldToLocal(v).normalize();
 }
-
-const dim = 3;
-const pyraminx = createPyraminxThreeObject(dim);
-const stateMap = createStateMap(pyraminx, dim);
-
-const rotator = new THREE.Group();
-pyraminx.add(rotator);
-
-pyraminx.updateMatrix();
-pyraminx.updateMatrixWorld(true);
-
-
-const axesOfRotation = getAxesForLayersRotation(pyraminx, stateMap);
-
-const rotationInfo = {
-    layer : null,
-    axis : null,
-    deg : 0
-};
-
-
-function rotateLayer(layer, deg) {
-
-    const { face, index } = layer;
-
-    if (rotator.children.length === 0) {
-
-        if (index === 0) {
-            stateMap[face].forEach(triangle => rotator.attach(triangle));
-        }
-
-        let generators = getGenerators(layer);
-
-        for (let adjFace in generators) {
-            for (let i of generators[adjFace]) {
-                rotator.attach(stateMap[adjFace][i]);
-            }
-        }
-        
-        rotationInfo.layer = layer;
-        rotationInfo.axis = moveFromLocalToLocal(axesOfRotation[face], pyraminx, rotator);
-    }
-    
-    rotator.rotateOnAxis(rotationInfo.axis, THREE.MathUtils.degToRad(deg));
-    rotationInfo.deg += deg;
-}
-
-
-function getGenerators(layer) {
-
-    const { face, index } = layer;
-    const count = 1 + 2 * (dim - index - 1);
-
-    let generators = null;
-
-    if (face === 'F') {
-        generators = {
-            L : generateRightDiagonal(index, count),
-            R : generateLeftDiagonal(index, count),
-            D : generateHorizontal(dim - index - 1, count)
-        }
-    }
-    else if (face === 'L') {
-        generators = {
-            F : generateLeftDiagonal(index, count),
-            R : generateRightDiagonal(index, count),
-            D : generateRightDiagonal(index, count)
-        }
-    }
-    else if (face === 'R') {
-        generators = {
-            F : generateRightDiagonal(index, count),
-            L : generateLeftDiagonal(index, count),
-            D : generateLeftDiagonal(index, count)
-        }
-    }
-    else if (face === 'D') {
-        generators = {
-            L : generateHorizontal(dim - index - 1, count),
-            R : generateHorizontal(dim - index - 1, count),
-            F : generateHorizontal(dim - index - 1, count)
-        }
-    }
-
-    return generators;
-}
-
-
-function fixChanges() {
-    
-    const { layer, deg } = rotationInfo;
-    
-    if (Math.abs(deg) % 120 === 0) {
-        
-        const countOfRotations = (Math.abs(deg) % 360) / 120;
-
-        const direction = deg > 0 ? 'right' : deg < 0 ? 'left' : 'no changes';
-
-        console.log('layer: ', layer);
-        console.log('deg: ', deg);
-        console.log('direction: ', direction);
-        console.log('count: ', countOfRotations);
-        
-        while (rotator.children.length > 0) { 
-            pyraminx.attach(rotator.children[0]);
-        }
-
-        rotationInfo.deg = 0;
-
-        if (direction === 'right' || direction === 'left') {
-            saveChanges(layer, direction, countOfRotations);
-        }
-    }
-}
-
-
-function getSlicesIndices(layer) {
-    const generators = getGenerators(layer);
-    const slicesIndices = { };
-
-    for (let adjFace in generators) {
-        slicesIndices[adjFace] = Array.from(generators[adjFace]);
-    }
-
-    if (layer.face === 'F') {
-        slicesIndices.L.reverse();
-    }
-    else if (layer.face === 'R') {
-        slicesIndices.F.reverse();
-    }
-    else if (layer.face === 'L') {
-        slicesIndices.F.reverse();
-    }
-
-    return slicesIndices;
-}
-
-
-function getRightRotationCycle(layer) {
-    let cycle = [];
-
-    if (layer.face === 'F') {
-        cycle = ['R', 'L', 'D'];
-    }
-    else if (layer.face === 'R') {
-        cycle = ['L', 'F', 'D'];
-    }
-    else if (layer.face === 'L') {
-        cycle = ['F', 'R', 'D'];
-    }
-    else if (layer.face === 'D') {
-        cycle = ['F', 'L', 'R'];
-    }
-
-    return cycle;
-}
-
-
-function saveChanges(layer, direction, countOfRotations) {
-
-    countOfRotations %= 3;
-
-    if (countOfRotations === 0) return;
-
-    if (countOfRotations === 2) {
-        direction = direction === 'right' ? 'left' : 'right';
-        countOfRotations = 1;
-    }
-
-    const cycle = getRightRotationCycle(layer);
-    const indices = getSlicesIndices(layer);
-
-    if (direction === 'left') {
-        cycle.reverse();
-    }
-
-    for (let i = 0; i < 2; i++) {
-        swapSlices(
-            cycle[i], cycle[i + 1], 
-            indices[cycle[i]], indices[cycle[i + 1]]);
-    }
-
-    if (layer.index === 0) {
-
-        if (direction === 'right') {
-            invertRightDiagonals(layer.face);
-            invertLeftDiagonals(layer.face);
-        }
-        else {
-            invertLeftDiagonals(layer.face);
-            invertRightDiagonals(layer.face);
-        }
-    }
-}
-
-function swapSlices(face1, face2, indices1, indices2) {
-
-    for (let i = 0; i < indices1.length; i++) {
-        const tmp = stateMap[face1][indices1[i]];
-        stateMap[face1][indices1[i]] = stateMap[face2][indices2[i]];
-        stateMap[face2][indices2[i]] = tmp;
-    }
-}
-
-function invertRightDiagonals(face) {
-
-    for (let i = 0; i < dim; i++) {    
-        const count = 1 + 2 * (dim - i - 1);
-        const indices = Array.from(generateRightDiagonal(i, count));
-
-        invertDiagonal(stateMap[face], indices);
-    }
-}
-
-function invertLeftDiagonals(face) {
-
-    for (let i = 0; i < dim; i++) {    
-        const count = 1 + 2 * (dim - i - 1);
-        const indices = Array.from(generateLeftDiagonal(i, count));
-
-        invertDiagonal(stateMap[face], indices);
-    }
-}
-
-function invertDiagonal(arrayOfTriangles, indices) {
-
-    const n = indices.length;
-
-    for (let i = 0; i < Math.floor(n / 2); i++) {
-        const tmp = arrayOfTriangles[indices[i]];
-        arrayOfTriangles[indices[i]] = arrayOfTriangles[indices[n - i - 1]];
-        arrayOfTriangles[indices[n - i - 1]] = tmp;
-    }
-}
-
-
-rotator.rotateY(THREE.MathUtils.degToRad(34));
-rotator.rotateX(THREE.MathUtils.degToRad(44));
-rotator.rotateZ(THREE.MathUtils.degToRad(54));
-
-
-
-scene.add(pyraminx);
-
-// update each frame
-(function update() {
-    requestAnimationFrame(update);
-    
-    controls.update();    
-    renderer.render(scene, camera);    
-})();
 
 
 // generates sequences:
@@ -439,6 +407,7 @@ function* generateRightDiagonal(n, count) {
     }
 }
 
+
 // generates sequences:
 // 0, 1, 2, 4, 5, 9, 10 ...         for 0th layer
 // 3, 6, 7, 11, 12, 18, 19 ...      for 1st layer
@@ -456,6 +425,7 @@ function* generateLeftDiagonal(n, count) {
     }
 }
 
+
 // generates sequences:
 // 0                for 0th layer
 // 1, 2, 3          for 1st layer
@@ -469,7 +439,8 @@ function* generateHorizontal(n, count) {
 }
 
 
-(function setGUIController(){
+// simple gui controller to rotate pyraminx's layers
+export function setGUIController(pyraminx){
     const controller = {
         x : 0,
         y : 0,
@@ -480,27 +451,27 @@ function* generateHorizontal(n, count) {
     const panel = new gui.GUI();
     
     panel.add(controller, 'x', -180, 180, 1).onChange(() => { 
-        pyraminx.rotation.x = THREE.MathUtils.degToRad(controller.x);
+        pyraminx.threeObject.rotation.x = THREE.MathUtils.degToRad(controller.x);
     });
     
     panel.add(controller, 'y', -180, 180, 1).onChange(() => { 
-        pyraminx.rotation.y = THREE.MathUtils.degToRad(controller.y);
+        pyraminx.threeObject.rotation.y = THREE.MathUtils.degToRad(controller.y);
     });
     
     panel.add(controller, 'z', -180, 180, 1).onChange(() => { 
-        pyraminx.rotation.z = THREE.MathUtils.degToRad(controller.z);
+        pyraminx.threeObject.rotation.z = THREE.MathUtils.degToRad(controller.z);
     });
     
     panel.add(controller, 'fixChange', true, false).onChange(() => { 
         if (controller.fixChange === true) {
-            fixChanges();
+            pyraminx.fixChanges();
         }
     });
     
     const previousAngles = {};
     
     ['F', 'L', 'R', 'D'].forEach(face => {
-        for (let i = 0; i < dim; i++) {
+        for (let i = 0; i < pyraminx.dimension; i++) {
             controller[face + i] = 0;
             previousAngles[face + i] = 0;
     
@@ -509,11 +480,10 @@ function* generateHorizontal(n, count) {
                 const delta = controller[face + i] - previousAngles[face + i];
                 previousAngles[face + i] = controller[face + i];
     
-                rotateLayer({ face: face, index: i }, delta);
+                pyraminx.rotateLayer({ face: face, index: i }, delta);
             });
         }
     });
-})();
-
+};
 
 
