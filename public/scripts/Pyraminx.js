@@ -177,14 +177,18 @@ const stateMap = createStateMap(pyraminx, dim);
 const rotator = new THREE.Group();
 pyraminx.add(rotator);
 
-
 pyraminx.updateMatrix();
 pyraminx.updateMatrixWorld(true);
 
 
-
 const axesOfRotation = getAxesForLayersRotation(pyraminx, stateMap);
-let axis;
+
+const rotationInfo = {
+    layer : null,
+    axis : null,
+    deg : 0
+};
+
 
 function rotateLayer(layer, deg) {
 
@@ -204,10 +208,12 @@ function rotateLayer(layer, deg) {
             }
         }
         
-        axis = moveFromLocalToLocal(axesOfRotation[face], pyraminx, rotator);
+        rotationInfo.layer = layer;
+        rotationInfo.axis = moveFromLocalToLocal(axesOfRotation[face], pyraminx, rotator);
     }
-
-    rotator.rotateOnAxis(axis, THREE.MathUtils.degToRad(deg));
+    
+    rotator.rotateOnAxis(rotationInfo.axis, THREE.MathUtils.degToRad(deg));
+    rotationInfo.deg += deg;
 }
 
 
@@ -251,10 +257,23 @@ function getGenerators(layer) {
 }
 
 function fixChanges() {
-    while (rotator.children.length > 0) { 
-        pyraminx.attach(rotator.children[0]);
-    }
+    
+    console.log('info: ', rotationInfo);
 
+    const { layer, deg } = rotationInfo;
+    
+    if (Math.abs(deg) % 120 === 0) {
+        
+        console.log('layer: ', layer);
+        console.log('deg: ', deg);
+        console.log('direction: ', deg > 0 ? 'right' : deg < 0 ? 'left' : 'no changes');
+        
+        while (rotator.children.length > 0) { 
+            pyraminx.attach(rotator.children[0]);
+        }
+
+        rotationInfo.deg = 0;
+    }
 }
 
 rotator.rotateY(THREE.MathUtils.degToRad(34));
@@ -262,8 +281,6 @@ rotator.rotateX(THREE.MathUtils.degToRad(44));
 rotator.rotateZ(THREE.MathUtils.degToRad(54));
 
 
-// rotateLayer({ face: 'D', index: 2 }, 120);
-// fixChanges();
 
 scene.add(pyraminx);
 
