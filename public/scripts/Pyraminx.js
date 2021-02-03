@@ -256,25 +256,154 @@ function getGenerators(layer) {
     return generators;
 }
 
+
 function fixChanges() {
     
-    console.log('info: ', rotationInfo);
-
     const { layer, deg } = rotationInfo;
     
     if (Math.abs(deg) % 120 === 0) {
         
+        const countOfRotations = (Math.abs(deg) % 360) / 120;
+
+        const direction = deg > 0 ? 'right' : deg < 0 ? 'left' : 'no changes';
+
         console.log('layer: ', layer);
         console.log('deg: ', deg);
-        console.log('direction: ', deg > 0 ? 'right' : deg < 0 ? 'left' : 'no changes');
+        console.log('direction: ', direction);
+        console.log('count: ', countOfRotations);
         
         while (rotator.children.length > 0) { 
             pyraminx.attach(rotator.children[0]);
         }
 
         rotationInfo.deg = 0;
+
+        if (direction === 'right' || direction === 'left') {
+            saveChanges(layer, direction, countOfRotations);
+        }
     }
 }
+
+
+function getSlicesIndices(layer) {
+    const generators = getGenerators(layer);
+    const slicesIndices = { };
+
+    for (let adjFace in generators) {
+        slicesIndices[adjFace] = Array.from(generators[adjFace]);
+    }
+
+    if (layer.face === 'F') {
+        slicesIndices.L.reverse();
+    }
+    else if (layer.face === 'R') {
+        slicesIndices.F.reverse();
+    }
+    else if (layer.face === 'L') {
+        slicesIndices.F.reverse();
+    }
+
+    return slicesIndices;
+}
+
+
+function getRightRotationCycle(layer) {
+    let cycle = [];
+
+    if (layer.face === 'F') {
+        cycle = ['R', 'L', 'D'];
+    }
+    else if (layer.face === 'R') {
+        cycle = ['L', 'F', 'D'];
+    }
+    else if (layer.face === 'L') {
+        cycle = ['F', 'R', 'D'];
+    }
+    else if (layer.face === 'D') {
+        cycle = ['F', 'L', 'R'];
+    }
+
+    return cycle;
+}
+
+
+function saveChanges(layer, direction, countOfRotations) {
+
+    countOfRotations %= 3;
+
+    if (countOfRotations === 0) return;
+
+    if (countOfRotations === 2) {
+        direction = direction === 'right' ? 'left' : 'right';
+        countOfRotations = 1;
+    }
+
+    const cycle = getRightRotationCycle(layer);
+    const indices = getSlicesIndices(layer);
+
+    if (direction === 'left') {
+        cycle.reverse();
+    }
+
+    for (let i = 0; i < 2; i++) {
+        swapSlices(
+            cycle[i], cycle[i + 1], 
+            indices[cycle[i]], indices[cycle[i + 1]]);
+    }
+
+    if (layer.index === 0) {
+
+        if (direction === 'right') {
+            invertRightDiagonals(layer.face);
+            invertLeftDiagonals(layer.face);
+        }
+        else {
+            invertLeftDiagonals(layer.face);
+            invertRightDiagonals(layer.face);
+        }
+    }
+}
+
+function swapSlices(face1, face2, indices1, indices2) {
+
+    for (let i = 0; i < indices1.length; i++) {
+        const tmp = stateMap[face1][indices1[i]];
+        stateMap[face1][indices1[i]] = stateMap[face2][indices2[i]];
+        stateMap[face2][indices2[i]] = tmp;
+    }
+}
+
+function invertRightDiagonals(face) {
+
+    for (let i = 0; i < dim; i++) {    
+        const count = 1 + 2 * (dim - i - 1);
+        const indices = Array.from(generateRightDiagonal(i, count));
+
+        invertDiagonal(stateMap[face], indices);
+    }
+}
+
+function invertLeftDiagonals(face) {
+
+    for (let i = 0; i < dim; i++) {    
+        const count = 1 + 2 * (dim - i - 1);
+        const indices = Array.from(generateLeftDiagonal(i, count));
+
+        invertDiagonal(stateMap[face], indices);
+    }
+}
+
+function invertDiagonal(arrayOfTriangles, indices) {
+
+    const n = indices.length;
+
+    for (let i = 0; i < Math.floor(n / 2); i++) {
+        const tmp = arrayOfTriangles[indices[i]];
+        arrayOfTriangles[indices[i]] = arrayOfTriangles[indices[n - i - 1]];
+        arrayOfTriangles[indices[n - i - 1]] = tmp;
+    }
+}
+
 
 rotator.rotateY(THREE.MathUtils.degToRad(34));
 rotator.rotateX(THREE.MathUtils.degToRad(44));
@@ -322,8 +451,8 @@ function* generateLeftDiagonal(n, count) {
     for (let i = 1; i <= Math.floor((count - 1) / 2); i++) {
         xn += (1 + 2 * (n + i - 1));
         
-        yield xn;
         yield xn + 1;
+        yield xn;
     }
 }
 
