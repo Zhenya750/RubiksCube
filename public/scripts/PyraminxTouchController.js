@@ -7,6 +7,8 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
     const coordPlane = createCoordinatePlane(10);
     let touchInfo;
 
+    let wasTouched = false;
+
     // private methods
     function setCenteredMouseCoordinates(event) {
         mouse.x = (event.clientX / canvas.width) * 2 - 1;
@@ -37,6 +39,7 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
 
             canvas.addEventListener('mousemove', onMouseMove, false);
 
+            wasTouched = true;
             this.onStartTouching();
         }
     }
@@ -68,7 +71,10 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
 
         canvas.removeEventListener('mousemove', onMouseMove);
 
-        this.onStopTouching();
+        if (wasTouched === true) {
+            wasTouched = false;
+            this.onStopTouching();
+        }
     }
 
 
@@ -220,6 +226,7 @@ function getLayer(touchInfo, directionName) {
         index : directionToLayerIndex[directionName]
     };
 }
+
 
 function createCoordinatePlane(size) {
     const geometry = new THREE.PlaneGeometry(size, size);
