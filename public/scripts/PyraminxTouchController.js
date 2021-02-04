@@ -2,12 +2,23 @@ import * as THREE from './three_data/build/three.module.js';
 
 export const PyraminxTouchController = function(pyraminx, canvas, camera) {
 
+    // private fields
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    const coordPlane = createCoordinatePlane(10);
-    let touchInfo;
+    const coordPlane = createCoordinatePlane(100);
 
+    const rotationState = {
+        state : 'PREPARING',
+        layer : null,
+        previousDistance : 0,
+        direction : null
+    };
+
+    let touchInfo;
+    let closestAngleInfo = null;
     let wasTouched = false;
+    let canCompleteRotation = false;
+
 
     // private methods
     function setCenteredMouseCoordinates(event) {
@@ -33,7 +44,9 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
             const point = triangle.worldToLocal(intersects[0].point);
             touchInfo = pyraminx.getTriangleInfo(triangle);
 
-            if (touchInfo.face === '') return;
+            if (touchInfo.face === '') {
+                throw 'unknown intersected object';
+            }
 
             setCoordinatePlane(triangle, point, touchInfo);
 
@@ -44,26 +57,12 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
         }
     }
 
-    const flag = new THREE.AxesHelper(0.5);
-
-    const rotationState = {
-        state : 'PREPARING',
-        layer : null,
-        previousDistance : 0,
-        direction : null
-    };
-
 
     const onMouseUp = (event) => {
 
         if (this.enabled === false) return;
 
         console.log('mouse up');
-
-        rotationState.state = 'PREPARING';
-        rotationState.layer = null;
-        rotationState.previousDistance = 0;
-        rotationState.direction = null;
 
         if (coordPlane.parent) {
             coordPlane.parent.remove(coordPlane);
@@ -74,6 +73,7 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
         if (wasTouched === true) {
             wasTouched = false;
             this.onStopTouching();
+            canCompleteRotation = true;
         }
     }
 
@@ -96,7 +96,7 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
             switch (rotationState.state) {
 
                 case 'PREPARING':
-                    if (distance > 0.02) {
+                    if (distance > 0.05) {
                         rotationState.state = 'DEFINING';
                     }
                     break;
@@ -104,17 +104,12 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
                 case 'DEFINING':
                     rotationState.direction = getDirection(point.x, point.y);
                     rotationState.layer = getLayer(touchInfo, rotationState.direction.name);
-    
                     rotationState.state = 'ROTATING';
                     break;
 
                 case 'ROTATING':
                     let project = point.projectOnVector(rotationState.direction.vector);
                     let len = project.length();
-    
-                    coordPlane.add(flag);
-                    flag.position.set(project.x, project.y, 0);
-    
                     const sign = project.dot(rotationState.direction.vector) >= 0 ? 1 : -1;
                     const delta = len - rotationState.previousDistance;
 
@@ -122,6 +117,9 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
 
                     rotationState.previousDistance = len;
                     break;
+
+                default:
+                    throw 'Unknown rotation state';
             }
         }
     }
@@ -159,20 +157,94 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
         pyraminx.threeObject.attach(coordPlane);
     }
 
+
+    const tryCompleteRotation = () => {
+
+        if (!rotationState.layer) {
+            canCompleteRotation = false;
+        }
+
+        if (canCompleteRotation === false) return;
+
+        if (!closestAngleInfo) {
+            const currentAngle = pyraminx.getCurrentRotationAngle();
+            closestAngleInfo = getClosestAngleInfo(currentAngle, this.positiveStepToCompleteRotation);
+        }
+        
+        if (closestAngleInfo.countOfSteps > 0) {
+
+            pyraminx.rotateLayer(rotationState.layer, closestAngleInfo.step);
+            closestAngleInfo.countOfSteps--;
+        }
+        else {
+            pyraminx.rotateLayer(rotationState.layer, closestAngleInfo.lastStep);
+            pyraminx.fixChanges();
+
+            rotationState.state = 'PREPARING';
+            rotationState.layer = null;
+            rotationState.previousDistance = 0;
+            rotationState.direction = null;
+            
+            closestAngleInfo = null;
+            canCompleteRotation = false;
+        }
+    }
+
+
     canvas.addEventListener('mousedown', onMouseDown, false);
     canvas.addEventListener('mouseup', onMouseUp, false);
 
 
     // public interface
     this.enabled = true;
-
-    this.speedFactor = pyraminx.dimension * 7;
+    this.speedFactor = 150 / pyraminx.dimension;
+    this.positiveStepToCompleteRotation = 3;
 
 
     this.onStartTouching = function() {}
 
 
     this.onStopTouching = function() {}
+
+
+    this.update = function() {
+        tryCompleteRotation();
+    }
+}
+
+
+function getClosestAngleInfo(currentAngle, positiveStep) {
+
+    const sign = currentAngle >= 0 ? 1 : -1;
+    const alpha = Math.abs(currentAngle);
+
+    const left = 120 * Math.floor(alpha / 120);
+    const right = 120 * Math.ceil(alpha / 120);
+
+    const leftDelta = alpha - left;
+    const rightDelta = right - alpha;
+
+    const info = {
+        closestAngle : 0,
+        countOfSteps : 0,
+        step : 0,
+        lastStep : 0
+    }
+
+    if (leftDelta < rightDelta) {
+        info.closestAngle = left * sign;
+        info.countOfSteps = Math.floor(leftDelta / positiveStep);
+        info.step = -sign * positiveStep;
+        info.lastStep = -sign * (leftDelta - positiveStep * info.countOfSteps);
+    }
+    else {
+        info.closestAngle = right * sign;
+        info.countOfSteps = Math.floor(rightDelta / positiveStep);
+        info.step = sign * positiveStep;
+        info.lastStep = sign * (rightDelta - positiveStep * info.countOfSteps);
+    }
+
+    return info;
 }
 
 
@@ -235,12 +307,10 @@ function createCoordinatePlane(size) {
         polygonOffset: true,
         polygonOffsetFactor: 0.5,
         transparent: true,
-        opacity: 0.5
+        opacity: 0
     });
 
     const plane = new THREE.Mesh(geometry, material);
-
-    plane.add(new THREE.AxesHelper(size * 0.75));
-
+    // plane.add(new THREE.AxesHelper(size * 0.75));
     return plane;
 }

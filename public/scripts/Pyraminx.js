@@ -247,6 +247,7 @@ export const Pyraminx = function(dimension) {
         }
     }
 
+
     this.getTriangleInfo = function(triangle) {
 
         const info = {
@@ -295,6 +296,11 @@ export const Pyraminx = function(dimension) {
         }
 
         return info;
+    }
+
+
+    this.getCurrentRotationAngle = function() {
+        return rotationInfo.deg;
     }
 }
 
