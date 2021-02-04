@@ -246,6 +246,56 @@ export const Pyraminx = function(dimension) {
             }
         }
     }
+
+    this.getTriangleInfo = function(triangle) {
+
+        const info = {
+            face : '',
+            leftDiagonal : 0,
+            rightDiagonal : 0,
+            horizontal : 0
+        };
+
+        for (let face in stateMap) {
+
+            const index = stateMap[face].indexOf(triangle);
+
+            if (index > -1) {
+
+                info.face = face;
+
+                for (let i = 0; i < dim; i++) {
+                    const count = 1 + 2 * (dim - i - 1);
+                    
+                    const gld = generateLeftDiagonal(i, count);
+                    for (let j of gld) {
+                        if (j === index) {
+                            info.leftDiagonal = i;
+                            break;
+                        }
+                    }
+
+                    const grd = generateRightDiagonal(i, count);
+                    for (let j of grd) {
+                        if (j === index) {
+                            info.rightDiagonal = i;
+                            break;
+                        }
+                    }
+                    
+                    const gh = generateHorizontal(dim - i - 1, count);
+                    for (let j of gh) {
+                        if (j === index) {
+                            info.horizontal = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return info;
+    }
 }
 
 
