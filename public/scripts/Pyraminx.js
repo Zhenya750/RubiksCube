@@ -5,7 +5,7 @@ import * as gui from './three_data/build/dat.gui.module.js';
 export const Pyraminx = function(dimension) {
 
     const dim = dimension;
-    const pyraminx = createPyraminxThreeObject(dim);
+    const { pyraminx, planesBetween } = createPyraminxThreeObject(dim);
     const stateMap = createStateMap(pyraminx, dim);
     const rotator = new THREE.Group();
 
@@ -173,23 +173,10 @@ export const Pyraminx = function(dimension) {
             reverseDiagonal(stateMap[face], indices);
         }
     }
-    
-
-    function reverseDiagonal(arrayOfTriangles, indices) {
-    
-        const n = indices.length;
-    
-        for (let i = 0; i < Math.floor(n / 2); i++) {
-            const tmp = arrayOfTriangles[indices[i]];
-            arrayOfTriangles[indices[i]] = arrayOfTriangles[indices[n - i - 1]];
-            arrayOfTriangles[indices[n - i - 1]] = tmp;
-        }
-    }
 
 
     // public interface
     this.threeObject = pyraminx;
-
     this.dimension = dim;
 
 
@@ -213,6 +200,10 @@ export const Pyraminx = function(dimension) {
             
             rotationInfo.layer = layer;
             rotationInfo.axis = moveFromLocalToLocal(axesOfRotation[face], pyraminx, rotator);
+
+            showPlanesAroundLayer(layer, planesBetween);
+            rotator.attach(planesBetween[face][index]);
+
         }
         
         rotator.rotateOnAxis(rotationInfo.axis, THREE.MathUtils.degToRad(deg));
@@ -238,6 +229,8 @@ export const Pyraminx = function(dimension) {
             while (rotator.children.length > 0) { 
                 pyraminx.attach(rotator.children[0]);
             }
+            
+            hidePlanesAroundLayer(layer, planesBetween);
     
             rotationInfo.deg = 0;
     
@@ -320,14 +313,14 @@ function createTriangle(color) {
 
     const material = new THREE.MeshPhongMaterial({ 
         color: color.background,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
         polygonOffset: true,
         polygonOffsetFactor: 1
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.add(new THREE.AxesHelper(0.3));
-
+    
+    // mesh.add(new THREE.AxesHelper(0.3));
     const wireframe = new THREE.WireframeGeometry(geometry);
     const line = new THREE.LineSegments(wireframe);
     mesh.add(line);
@@ -397,15 +390,88 @@ function createPyraminxThreeObject(numberOfLayers) {
     const H = Math.sqrt(6) / 3 * n;
     group.position.set(n / 2, H / 4, -h / 3);
 
+    const planesBetweenLayers = {
+        F : createPlanesBetweenLayers(n, front),
+        R : createPlanesBetweenLayers(n, right),
+        L : createPlanesBetweenLayers(n, left),
+        D : createPlanesBetweenLayers(n, down)
+    }
+
     // !!! do not change the order of faces: F - L - R - D
     while (front.children.length > 0) group.attach(front.children[0]);
     while (left.children.length > 0) group.attach(left.children[0]);
     while (right.children.length > 0) group.attach(right.children[0]);
     while (down.children.length > 0) group.attach(down.children[0]);
+    
+    for (let face in planesBetweenLayers) {
+        planesBetweenLayers[face].forEach(plane => {
+            group.attach(plane);
+            plane.visible = false;
+        });
+    }
 
     group.position.set(0, 0, 0);
 
-    return group;
+    return { 
+        pyraminx : group,
+        planesBetween : planesBetweenLayers
+    };
+}
+
+
+function createPlanesBetweenLayers(numberOfLayers, faceGroup) {
+
+    const n = numberOfLayers;
+    const H = Math.sqrt(6) / 3 * n;
+
+    const planes1 = [];
+    const planes2 = [];
+
+    for (let i = n - 1; i >= 1; i--) {
+        const plane1 = createTriangle({ background: 0x000000 });
+    
+        faceGroup.add(plane1);
+        plane1.position.set(n / 2, Math.sqrt(3) / 2 * n / 3, -H / n * (n - i));
+        plane1.scale.set(i, i, 1);
+
+        const plane2 = plane1.clone(true);
+        faceGroup.add(plane2);
+
+        plane1.rotateY(Math.PI);
+        planes1.push(plane1);
+        planes2.push(plane2);
+    }
+
+    for (let i = 1; i < n - 1; i++) {
+        planes1[i].attach(planes2[i - 1]);
+    }
+    
+    planes1.push(planes2[n - 2]);
+    return planes1;
+}
+
+
+function showPlanesAroundLayer(layer, planes) {
+    const { face, index } = layer;
+    const n = planes[face].length;
+
+    for (let i = -1; i <= 1; i++) {
+        if (index + i >= 0 && index + i < n) {
+            planes[face][index + i].visible = true;
+        }
+    }
+}
+
+
+function hidePlanesAroundLayer(layer, planes) {
+    const { face, index } = layer;
+    const n = planes[face].length;
+
+    for (let i = -1; i <= 1; i++) {
+        if (index + i >= 0 && index + i < n) {
+            planes[face][index + i].visible = false;
+        }
+    }
 }
 
 
@@ -443,6 +509,18 @@ function getAxesForLayersRotation(pyraminx, stateMap) {
 function moveFromLocalToLocal(vector, oldObject, newObject) {
     let v = oldObject.localToWorld(vector.clone());
     return newObject.worldToLocal(v).normalize();
+}
+
+
+function reverseDiagonal(arrayOfTriangles, indices) {
+    
+    const n = indices.length;
+
+    for (let i = 0; i < Math.floor(n / 2); i++) {
+        const tmp = arrayOfTriangles[indices[i]];
+        arrayOfTriangles[indices[i]] = arrayOfTriangles[indices[n - i - 1]];
+        arrayOfTriangles[indices[n - i - 1]] = tmp;
+    }
 }
 
 
