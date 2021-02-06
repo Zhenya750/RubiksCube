@@ -166,10 +166,6 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
 
     const tryCompleteRotation = () => {
 
-        if (!rotationState.layer) {
-            canCompleteRotation = false;
-        }
-
         if (canCompleteRotation === false) return;
 
         if (!closestAngleInfo) {
@@ -178,14 +174,17 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
         }
         
         if (closestAngleInfo.countOfSteps > 0) {
-
-            pyraminx.rotateLayer(rotationState.layer, closestAngleInfo.step);
-            closestAngleInfo.countOfSteps--;
+            if (rotationState.layer) {
+                pyraminx.rotateLayer(rotationState.layer, closestAngleInfo.step);
+                closestAngleInfo.countOfSteps--;
+            }
         }
         else {
-            pyraminx.rotateLayer(rotationState.layer, closestAngleInfo.lastStep);
-            pyraminx.fixChanges();
-            
+            if (rotationState.layer) {
+                pyraminx.rotateLayer(rotationState.layer, closestAngleInfo.lastStep);
+                pyraminx.fixChanges();
+            }
+
             bringToStartState();
         }
     }
