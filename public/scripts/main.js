@@ -5,6 +5,10 @@ import * as gui from './three_data/build/dat.gui.module.js';
 
 import { Cube } from './Cube.js';
 import { CubeTouchController } from './CubeTouchController.js';
+
+import { Pyraminx, setGUIController } from './Pyraminx.js';
+import { PyraminxTouchController } from './PyraminxTouchController.js';
+
 import { RotationController } from './RotationController.js';
 
 // init scene
@@ -23,7 +27,7 @@ const gridHelper = new THREE.GridHelper(5, 10);
 scene.add(gridHelper);
 
 // camera
-camera.position.set(5, 5, 10);
+camera.position.set(3, 3, 7);
 camera.lookAt(0, 0, 0);
 const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -31,23 +35,27 @@ const controls = new OrbitControls(camera, renderer.domElement);
 function createLight(x, y, z) {
     const light = new THREE.DirectionalLight(0xffffff);
     light.position.set(x, y, z);
-    const lightHelper = new THREE.DirectionalLightHelper(light, 0.5);
+    // const lightHelper = new THREE.DirectionalLightHelper(light, 0.5);
     scene.add(light);
-    scene.add(lightHelper);
+    // scene.add(lightHelper);
 }
 
 createLight(-5, 5, 5);
 createLight(5, -5, -5);
 createLight(5, 5, 5);
 
-const DIM = 30;
-const cube = new Cube(DIM);
+const DIM = 16;
+// const cube = new Cube(DIM);
+const pyraminx = new Pyraminx(DIM);
+
 camera.position.set(DIM * 5 / 7, DIM * 5 / 7, DIM * 5 / 7);
 camera.lookAt(0, 0, 0);
 
 
-const touchController = new CubeTouchController(cube, renderer.domElement, camera);
-const rotationController = new RotationController(camera, cube.ThreeObject, renderer.domElement);
+// const touchController = new CubeTouchController(cube, renderer.domElement, camera);
+// const rotationController = new RotationController(camera, cube.ThreeObject, renderer.domElement);
+const touchController = new PyraminxTouchController(pyraminx, renderer.domElement, camera);
+const rotationController = new RotationController(camera, pyraminx.threeObject, renderer.domElement);
 
 const USE_ORBITCONTROLS = false;
 
@@ -77,7 +85,7 @@ touchController.onStopTouching = () => {
     }
 }
 
-scene.add(cube.ThreeObject);
+scene.add(pyraminx.threeObject);
 
 // update each frame
 (function update() {
