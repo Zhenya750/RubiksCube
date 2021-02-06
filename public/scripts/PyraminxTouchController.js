@@ -14,7 +14,7 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
         direction : null
     };
 
-    let touchInfo;
+    let touchInfo = null;
     let closestAngleInfo = null;
     let wasTouched = false;
     let canCompleteRotation = false;
@@ -36,7 +36,7 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
         setCenteredMouseCoordinates(event, mouse);
 
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(pyraminx.threeObject.children);
+        const intersects = raycaster.intersectObjects(pyraminx.getFacesTriangles());
 
         if (intersects.length > 0) {
 
@@ -50,8 +50,10 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
 
             setCoordinatePlane(triangle, point, touchInfo);
 
-            canvas.addEventListener('mousemove', onMouseMove, false);
-
+            document.addEventListener('mousemove', onMouseMove, false);
+            document.addEventListener('mouseup', onMouseUp, false);
+            canvas.removeEventListener('mousedown', onMouseDown);
+            
             wasTouched = true;
             this.onStartTouching();
         }
@@ -68,13 +70,14 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
             coordPlane.parent.remove(coordPlane);
         }
 
-        canvas.removeEventListener('mousemove', onMouseMove);
-
         if (wasTouched === true) {
             wasTouched = false;
             this.onStopTouching();
             canCompleteRotation = true;
         }
+
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
     }
 
 
@@ -82,6 +85,9 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
 
         if (this.enabled === false) return;
         if (!coordPlane) return;
+
+        // if mouse is not down (unexpected situation)
+        if (event.buttons === 0) onMouseUp();
 
         setCenteredMouseCoordinates(event, mouse);
 
@@ -179,20 +185,27 @@ export const PyraminxTouchController = function(pyraminx, canvas, camera) {
         else {
             pyraminx.rotateLayer(rotationState.layer, closestAngleInfo.lastStep);
             pyraminx.fixChanges();
-
-            rotationState.state = 'PREPARING';
-            rotationState.layer = null;
-            rotationState.previousDistance = 0;
-            rotationState.direction = null;
             
-            closestAngleInfo = null;
-            canCompleteRotation = false;
+            bringToStartState();
         }
     }
 
 
-    canvas.addEventListener('mousedown', onMouseDown, false);
-    canvas.addEventListener('mouseup', onMouseUp, false);
+    function bringToStartState() {
+        touchInfo = null;
+        closestAngleInfo = null;
+        canCompleteRotation = false;
+        wasTouched = false;
+
+        rotationState.state = 'PREPARING';
+        rotationState.layer = null;
+        rotationState.previousDistance = 0;
+        rotationState.direction = null;
+
+        canvas.addEventListener('mousedown', onMouseDown, false);
+    }
+
+    bringToStartState();
 
 
     // public interface

@@ -295,6 +295,16 @@ export const Pyraminx = function(dimension) {
     this.getCurrentRotationAngle = function() {
         return rotationInfo.deg;
     }
+
+
+    this.getFacesTriangles = function() {
+        let allTriangles = [];
+        for (let face in stateMap) {
+            allTriangles = allTriangles.concat(stateMap[face]);
+        }
+
+        return allTriangles;
+    }
 }
 
 
