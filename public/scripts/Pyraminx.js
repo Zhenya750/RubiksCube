@@ -321,21 +321,34 @@ function createTriangle(color) {
     geometry.computeVertexNormals();
     geometry.normalizeNormals();
 
-    const material = new THREE.MeshPhongMaterial({ 
+    const backgroundMaterial = new THREE.MeshPhongMaterial({ 
         color: color.background,
         side: THREE.FrontSide,
         polygonOffset: true,
         polygonOffsetFactor: 1
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
+    const backgroundMesh = new THREE.Mesh(geometry, backgroundMaterial);
     
+    const foregroundMaterial = new THREE.MeshPhongMaterial({ 
+        color: color.foreground,
+        side: THREE.FrontSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 0.9
+    });
+
+    const foregroundMesh = new THREE.Mesh(geometry, foregroundMaterial);
+    foregroundMesh.scale.set(0.87, 0.87, 1);
+
+    backgroundMesh.add(foregroundMesh);
+    foregroundMesh.translateZ(0.001);
+
     // mesh.add(new THREE.AxesHelper(0.3));
-    const wireframe = new THREE.WireframeGeometry(geometry);
-    const line = new THREE.LineSegments(wireframe);
-    mesh.add(line);
+    // const wireframe = new THREE.WireframeGeometry(geometry);
+    // const line = new THREE.LineSegments(wireframe);
+    // mesh.add(line);
     
-    return mesh;
+    return backgroundMesh;
 }
 
 
@@ -378,20 +391,20 @@ function createPyraminxThreeObject(numberOfLayers) {
     const n = numberOfLayers;
     const h = Math.sqrt(3) / 2 * n;
 
-    const front = createFace(n, { background: 0x3a49ee });
+    const front = createFace(n, { background: 0x000000, foreground: 0x3a49ee });
     front.rotateX(-Math.PI / 2 + Math.acos(1 / 3));
 
-    const left = createFace(n, { background: 0xf4844c });
+    const left = createFace(n, { background: 0x000000, foreground: 0xf4844c });
     left.position.set(n / 2, 0, -h);
     left.rotateY(-Math.PI * 2 / 3);
     left.rotateX(-Math.PI / 2 + Math.acos(1 / 3));
 
-    const right = createFace(n, { background: 0x37cd2f });
+    const right = createFace(n, { background: 0x000000, foreground: 0x37cd2f });
     right.position.set(n, 0, 0);
     right.rotateY(Math.PI * 2 / 3);
     right.rotateX(-Math.PI / 2 + Math.acos(1 / 3));
 
-    const down = createFace(n, { background: 0xe14343 });
+    const down = createFace(n, { background: 0x000000, foreground: 0xe14343 });
     down.position.set(n, 0, 0);
     down.rotateY(Math.PI);
     down.rotateX(Math.PI / 2);
@@ -438,7 +451,7 @@ function createPlanesBetweenLayers(numberOfLayers, faceGroup) {
     const planes2 = [];
 
     for (let i = n - 1; i >= 1; i--) {
-        const plane1 = createTriangle({ background: 0x000000 });
+        const plane1 = createTriangle({ background: 0x000000, foreground: 0x000000 });
     
         faceGroup.add(plane1);
         plane1.position.set(n / 2, Math.sqrt(3) / 2 * n / 3, -H / n * (n - i));
