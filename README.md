@@ -1,5 +1,6 @@
 Some Rubik's puzzles implemented using Three.js library
 
-<img src="screenshots/cube.JPG" width="50%">
-
-![screenshots](screenshots/pyraminx.JPG)
+<p float="left">
+  <img src="screenshots/cube.JPG" width="50%">
+  <img src="screenshots/pyraminx.JPG" width="50%">
+</p>
