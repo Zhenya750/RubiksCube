@@ -1,7 +1,11 @@
-Some Rubik's puzzles implemented using Three.js library
+Some Rubik's puzzles implemented using Three.js library.
 
-Rubik's cube 16x16x16
+Now two kind of puzzles are implemented:
+
+1) Rubik's cube 16x16x16
+
 <img src="screenshots/cube.JPG" width="40%">
 
-Pyraminx 16x16x16
+2) Pyraminx 16x16x16
+
 <img src="screenshots/pyraminx.JPG" width="40%">
