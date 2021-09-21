@@ -44,18 +44,35 @@ createLight(-5, 5, 5);
 createLight(5, -5, -5);
 createLight(5, 5, 5);
 
-const DIM = 16;
-// const cube = new Cube(DIM);
-const pyraminx = new Pyraminx(DIM);
+const DIM = 30;
+
+const MODE = "cube";
+let figure;
+let touchController;
+let rotationController;
+
+if (MODE === "cube") {
+    figure = new Cube(DIM);
+    touchController = new CubeTouchController(figure, renderer.domElement, camera);
+    rotationController = new RotationController(camera, figure.ThreeObject, renderer.domElement);
+} else if (MODE === "pyraminx") {
+    figure = new Pyraminx(DIM);
+    touchController = new PyraminxTouchController(figure, renderer.domElement, camera);
+    rotationController = new RotationController(camera, figure.threeObject, renderer.domElement);
+}
+
+function getThreeObject(mode, figure) {
+    if (mode === "cube") {
+        return figure.ThreeObject;
+    } else if (mode === "pyraminx") {
+        return figure.threeObject;
+    }
+
+    return null;
+}
 
 camera.position.set(DIM * 5 / 7, DIM * 5 / 7, DIM * 5 / 7);
 camera.lookAt(0, 0, 0);
-
-
-// const touchController = new CubeTouchController(cube, renderer.domElement, camera);
-// const rotationController = new RotationController(camera, cube.ThreeObject, renderer.domElement);
-const touchController = new PyraminxTouchController(pyraminx, renderer.domElement, camera);
-const rotationController = new RotationController(camera, pyraminx.threeObject, renderer.domElement);
 
 const USE_ORBITCONTROLS = false;
 
@@ -68,8 +85,7 @@ touchController.onStartTouching = () => {
     if (USE_ORBITCONTROLS) {
         // don't let camera move while interacting with the cube
         controls.enabled = false;
-    }
-    else {
+    } else {
         rotationController.enabled = false;
     }
 }
@@ -79,13 +95,12 @@ touchController.onStopTouching = () => {
 
     if (USE_ORBITCONTROLS) {
         controls.enabled = true;
-    }
-    else {
+    } else {
         rotationController.enabled = true;
     }
 }
 
-scene.add(pyraminx.threeObject);
+scene.add(getThreeObject(MODE, figure));
 
 // update each frame
 (function update() {
@@ -93,14 +108,11 @@ scene.add(pyraminx.threeObject);
 
     if (USE_ORBITCONTROLS) {
         controls.update();
-    }
-    else {
+    } else {
         rotationController.update();
     }
 
     touchController.update();
-    
-    renderer.render(scene, camera);    
+
+    renderer.render(scene, camera);
 })();
-
-
